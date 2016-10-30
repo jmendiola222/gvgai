@@ -9,7 +9,7 @@ import java.util.ArrayList;
  */
 public class Scenario {
 
-    private ArrayList<Observation>[][] grid;
+    public ArrayList<Observation>[][] grid;
 
     public Scenario(ArrayList<Observation>[][] grid){
         this.grid = grid;

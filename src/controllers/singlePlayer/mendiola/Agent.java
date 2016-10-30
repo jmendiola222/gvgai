@@ -4,12 +4,12 @@ import core.game.Observation;
 import core.game.StateObservation;
 import core.player.AbstractPlayer;
 import ontology.Types;
-import ontology.Types.ACTIONS;
 import tools.ElapsedCpuTimer;
 
-import java.awt.*;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.Scanner;
 
 public class Agent extends AbstractPlayer{
 
@@ -23,7 +23,11 @@ public class Agent extends AbstractPlayer{
 	 */
 	protected int block_size;
 
-	protected Knoledge knoledge;
+	protected Knowledge knoledge;
+
+	private int ignoreX = 0;
+	private Scanner scanner;
+	Random randomGenerator = new Random();
 
 	/**
 	 * Public constructor with state observation and time due.
@@ -34,9 +38,40 @@ public class Agent extends AbstractPlayer{
 	{
 		grid = so.getObservationGrid();
 		block_size = so.getBlockSize();
-		knoledge = new Knoledge();
+		knoledge = new Knowledge();
+		scanner = new Scanner(System.in);
+
 	}
 
+	private void userInteract(){
+		if(this.ignoreX > 0)
+		{
+			ignoreX--;
+			return;
+		}
+		//  prompt for
+		System.out.print("Enter cmd: ");
+		String cmd = scanner.next();
+		switch (cmd){
+			case "1":
+				this.ignoreX = 10;
+				break;
+			case "2":
+				this.ignoreX = 100;
+				break;
+			case "3":
+				this.ignoreX = 1000;
+				break;
+			case "k":
+				Printer.printKnowledge(this.knoledge, true);
+				break;
+			case "f":
+				Printer.printKnowledge(this.knoledge, false);
+				break;
+			default:
+				break;
+		}
+	}
 
 	/**
 	 * Picks an action. This function is called every game step to request an
@@ -47,42 +82,59 @@ public class Agent extends AbstractPlayer{
 	 */
 	public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
 
-		printStateObs(stateObs);
+		Scenario scenario = new Scenario(stateObs.copy().getObservationGrid());
 
-		Scenario scenario = new Scenario(stateObs.getObservationGrid());
+		List<Theory> theories =  knoledge.getMatchingTheories(scenario, 1);
 
-		Theory theory = getTheoryToRun(scenario);
-		if(theory == null || isWorthIt(theory)) {
-			theory = buildNewTheory(scenario, stateObs);
-			executeTheory(stateObs, theory);
-			knoledge.addTheory(theory);
+		userInteract();
+
+		float demand = 1F;
+		Theory theory = null;
+
+		while(theory == null){
+			theory = pickOneWorthIt(theories, demand);
+			if(theory == null){
+				theory = buildNewTheory(scenario, stateObs, theories);
+				if(theory != null)
+					knoledge.addTheory(theory);
+			}
+			demand *= 0.75;
 		}
 
-		System.out.println(theory);
+		Printer.printTheory(theory);
+		executeTheory(stateObs, theory);
 		theory.k++;
 		return theory.getAction();
 	}
 
-	private boolean isWorthIt(Theory theory){
-		return theory.getUtility() > 0.15;
+	private Theory pickOneWorthIt(List<Theory> theories, float threshold){
+		if (theories.size() == 0 || theories.get(0).getUtility() <= threshold) return null;
+
+		//As it's ordered by relevance, we weight the first ones
+		int index = (int) (Math.pow(randomGenerator.nextDouble(), 2) * theories.size());
+		return theories.get(index);
 	}
 
-	private Theory getTheoryToRun(Scenario scenario){
-		Theory theory = knoledge.existMatchingTheory(scenario);
-		if(theory == null){
-			theory = knoledge.getMostSimilarTheory(scenario);
-		}
-		if(theory == null || theory.match > 50){
-			return null;
-		}
-		return theory;
-	}
-
-	private Theory buildNewTheory(Scenario scenario, StateObservation stateObs){
+	private Theory buildNewTheory(Scenario scenario, StateObservation stateObs, List<Theory> theories){
 		Theory theory = new Theory(scenario);
-		Random randomGenerator = new Random();
 
 		ArrayList<Types.ACTIONS> actions = stateObs.getAvailableActions();
+
+		for(Theory t : theories){
+			if(t.match > 0) break;
+			int idx = 0;
+			while (idx < actions.size()) {
+				if (actions.get(idx) == t.getAction()) {
+					actions.remove(idx);
+					break;
+				}
+				idx++;
+			}
+		}
+
+		if(actions.size() == 0)
+			return null;
+
 		int index = randomGenerator.nextInt(actions.size());
 
 		Types.ACTIONS action = actions.get(index);
@@ -123,55 +175,11 @@ public class Agent extends AbstractPlayer{
 		//printDebug(fixedPositions,"fix");
 		//printDebug(movingPositions,"mov");
 
-		printGrid(grid);
+		Printer.printGrid(grid);
 		System.out.println();
 	}
 
-	private void printGrid(ArrayList<Observation>[][] grid)
-	{
-		int size = grid[0].length;
 
-		System.out.println("----------------------------");
-		for (int j = 0; j < size; j++) {
-			System.out.print("[");
-			for (int i = 0; i < grid.length; i++) {
-				ArrayList<Observation> cell = grid[i][j];
-				System.out.print("" + toPrintObs(cell) + ",");
-			}
-			System.out.println("]");
-		}
-	}
-
-	private String toPrintObs(ArrayList<Observation> observations) {
-		String result = "";
-		for (int j = 0; j < 2; j++) {
-			if(observations.size() > j) {
-				Observation observation = observations.get(j);
-				switch(observation.itype){
-					case 2: //is always
-						break;
-					case 0: //is wall
-						result += '+';
-						break;
-					case 1: //is player
-						result += 'X';
-						break;
-					case 3: //is hole
-						result += 'O';
-						break;
-					case 4: //is box
-						result += '#';
-						break;
-					default:
-						result += observation.itype;
-						break;
-				}
-			}else{
-				result += ' ';
-			}
-		}
-		return result;
-	}
 
 	/**
 	 * Prints the number of different types of sprites available in the "positions" array.
@@ -196,28 +204,5 @@ public class Agent extends AbstractPlayer{
 
 	private void printObservation(Observation obs) {
 		System.out.println(obs.itype + " (" + obs.position.x / 40 + ", " + obs.position.y / 40 + ") ");
-	}
-
-	/**
-	 * Gets the player the control to draw something on the screen.
-	 * It can be used for debug purposes.
-	 * @param g Graphics device to draw to.
-	 */
-	public void draw(Graphics2D g)
-	{
-		int half_block = (int) (block_size*0.5);
-		for(int j = 0; j < grid[0].length; ++j)
-		{
-			for(int i = 0; i < grid.length; ++i)
-			{
-				if(grid[i][j].size() > 0)
-				{
-					Observation firstObs = grid[i][j].get(0); //grid[i][j].size()-1
-					//Three interesting options:
-					int print = firstObs.category; //firstObs.itype; //firstObs.obsID;
-					g.drawString(print + "", i*block_size+half_block,j*block_size+half_block);
-				}
-			}
-		}
 	}
 }

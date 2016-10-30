@@ -45,7 +45,7 @@ public class Theory {
     }
 
     public String toString(){
-        return "Theory [" + this.id + "]: " + this.action;
+        return "Theory [" + this.id + "]: " + this.action + " | utility: " + this.utility +
+                " | p: " + this.p + " | k: " + this.k;
     }
-
 }
