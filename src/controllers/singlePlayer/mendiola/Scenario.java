@@ -15,11 +15,6 @@ public class Scenario {
         this.grid = grid;
     }
 
-    /**
-     * Zero means equal
-     * @param scenario same size
-     * @return
-     */
     public float compare(Scenario scenario){
         float result = 0;
         for (int i = 0; i < grid.length; i++) {

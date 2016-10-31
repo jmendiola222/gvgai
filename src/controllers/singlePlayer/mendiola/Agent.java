@@ -5,6 +5,7 @@ import core.game.StateObservation;
 import core.player.AbstractPlayer;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
+import tools.Vector2d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,13 @@ public class Agent extends AbstractPlayer{
 	private int ignoreX = 0;
 	private Scanner scanner;
 	Random randomGenerator = new Random();
+	private SokobanWorld world;
+
+	private double maxDist;
+
+	private Theory lastChangeStateTheory;
+	private double prevWorldBoxDist;
+	private int noChangesCounter = 0;
 
 	/**
 	 * Public constructor with state observation and time due.
@@ -41,6 +49,9 @@ public class Agent extends AbstractPlayer{
 		knoledge = new Knowledge();
 		scanner = new Scanner(System.in);
 
+		double h = so.getWorldDimension().getHeight() - 80.0;
+		double w = so.getWorldDimension().getWidth() - 80.0;
+		this.maxDist = Math.sqrt(h*h + w*w);
 	}
 
 	private void userInteract(){
@@ -62,11 +73,13 @@ public class Agent extends AbstractPlayer{
 			case "3":
 				this.ignoreX = 1000;
 				break;
-			case "k":
-				Printer.printKnowledge(this.knoledge, true);
+			case "f": //full
+				Printer.printKnowledge(this.knoledge, true, true);
 				break;
-			case "f":
-				Printer.printKnowledge(this.knoledge, false);
+			case "k": //knowledge
+				Printer.printKnowledge(this.knoledge, false, false);
+			case "s": //scenario
+				Printer.printKnowledge(this.knoledge, false, false);
 				break;
 			default:
 				break;
@@ -82,13 +95,15 @@ public class Agent extends AbstractPlayer{
 	 */
 	public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
 
-		Scenario scenario = new Scenario(stateObs.copy().getObservationGrid());
+		world = new SokobanWorld(stateObs);
+
+		Scenario scenario = world.getCurrentScenario();
 
 		List<Theory> theories =  knoledge.getMatchingTheories(scenario, 1);
 
 		userInteract();
 
-		float demand = 1F;
+		double demand = 1F;
 		Theory theory = null;
 
 		while(theory == null){
@@ -101,13 +116,22 @@ public class Agent extends AbstractPlayer{
 			demand *= 0.75;
 		}
 
-		Printer.printTheory(theory);
 		executeTheory(stateObs, theory);
 		theory.k++;
+
+		if(noChangesCounter == 100){
+			//TODO make it stop
+		}
+
+		try {
+			Thread.sleep(200);
+		}catch (Exception ex){}
+
+		//Printer.printTheory(theory);
 		return theory.getAction();
 	}
 
-	private Theory pickOneWorthIt(List<Theory> theories, float threshold){
+	private Theory pickOneWorthIt(List<Theory> theories, double threshold){
 		if (theories.size() == 0 || theories.get(0).getUtility() <= threshold) return null;
 
 		//As it's ordered by relevance, we weight the first ones
@@ -153,56 +177,46 @@ public class Agent extends AbstractPlayer{
 	}
 
 	private void evaluateTheory(Theory theory, StateObservation resultSO){
-		if(resultSO.isGameOver()){
+		if(resultSO.getGameWinner() == Types.WINNER.PLAYER_LOSES) {
 			theory.setUtility(0);
 			return;
+		} else if (resultSO.getGameWinner() == Types.WINNER.PLAYER_WINS) {
+			theory.setUtility(1);
+			return;
 		}
-		float compare = theory.getScenario().compare(new Scenario(resultSO.getObservationGrid()));
-		if(compare == 0){
+
+		double compare = theory.getScenario().compare(new Scenario(resultSO.getObservationGrid()));
+		if(compare == 0)
 			theory.setUtility(0);
-		}
-		else{
-			theory.setUtility(0.5F);
-		}
-	}
-
-	private void printStateObs(StateObservation stateObs){
-		ArrayList<Observation>[] fixedPositions = stateObs.getImmovablePositions();
-		ArrayList<Observation>[] movingPositions = stateObs.getMovablePositions();
-
-		grid = stateObs.getObservationGrid();
-
-		//printDebug(fixedPositions,"fix");
-		//printDebug(movingPositions,"mov");
-
-		Printer.printGrid(grid);
-		System.out.println();
-	}
-
-
-
-	/**
-	 * Prints the number of different types of sprites available in the "positions" array.
-	 * Between brackets, the number of observations of each type.
-	 * @param positions array with observations.
-	 * @param str identifier to print
-	 */
-	private void printDebug(ArrayList<Observation>[] positions, String str)
-	{
-		if(positions != null){
-			System.out.print(str + ":" + positions.length + "{");
-			for (int i = 0; i < positions.length; i++) {
-				ArrayList<Observation> obs = positions[i];
-				for (int j = 0; j < obs.size(); j++) {
-					Observation observation = obs.get(j);
-					printObservation(observation);
-				}
+		else {
+			if(this.prevWorldBoxDist == world.boxDistance)
+				this.noChangesCounter++;
+			else {
+				this.noChangesCounter = 0;
+				this.lastChangeStateTheory = theory;
+				this.prevWorldBoxDist = world.boxDistance;
 			}
-			System.out.print("]; ");
-		}else System.out.print(str + ";");
+
+			double currentProx = calculateStateProximity(world);
+			double newProx = calculateStateProximity(new SokobanWorld(resultSO));
+			theory.setUtility(0.5 + (currentProx - newProx));
+		}
 	}
 
-	private void printObservation(Observation obs) {
-		System.out.println(obs.itype + " (" + obs.position.x / 40 + ", " + obs.position.y / 40 + ") ");
+	private double calculateStateProximity(SokobanWorld world){
+
+		ArrayList<Observation> boxes = world.getBoxes();
+		double boxAcum = 0;
+		double playerAcum = 0;
+		Vector2d myPosition = world.getMyPlayerPosition();
+		ArrayList<Observation> holes = world.getHoles();
+		for(Observation box : boxes){
+			for(Observation hole : holes)
+				boxAcum += box.position.dist(hole.position);
+			playerAcum += box.position.dist(myPosition);
+		}
+		world.boxDistance = (boxAcum / (double)(boxes.size() * holes.size())) / maxDist;
+		double playerDist = (playerAcum / (double)(boxes.size())) / maxDist;
+		return world.boxDistance * 10 + playerDist;
 	}
 }

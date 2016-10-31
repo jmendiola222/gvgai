@@ -12,11 +12,11 @@ public class Theory {
     private Scenario scenario;
 
     private Types.ACTIONS action;
-    private float utility;
+    private double utility;
     public int k; //used
     public int p; //success
 
-    public float match;
+    public double match;
 
     public Theory(Scenario scenario){
         this.setScenario(scenario);
@@ -36,11 +36,11 @@ public class Theory {
         return action;
     }
 
-    public float getUtility() {
+    public double getUtility() {
         return utility;
     }
 
-    public void setUtility(float utility) {
+    public void setUtility(double utility) {
         this.utility = utility;
     }
 

@@ -9,9 +9,11 @@ import java.util.ArrayList;
  */
 public class Printer {
 
-    public static void printKnowledge(Knowledge knowledge, boolean withScenarios) {
+    public static void printKnowledge(Knowledge knowledge, boolean withScenarios, boolean includeUseless) {
         System.out.println("/******** KNOWLEDGE START ********/");
         for (Theory t : knowledge.theories) {
+            if(includeUseless && t.getUtility() == 0d)
+                continue;
             printTheory(t);
             if (withScenarios)
                 printGrid(t.getScenario().grid);
@@ -27,7 +29,6 @@ public class Printer {
     {
         int size = grid[0].length;
 
-        System.out.println("----------------------------");
         for (int j = 0; j < size; j++) {
             System.out.print("[");
             for (int i = 0; i < grid.length; i++) {
@@ -36,6 +37,7 @@ public class Printer {
             }
             System.out.println("]");
         }
+        System.out.println("----------------------------");
     }
 
     public static String toPrintObs(ArrayList<Observation> observations) {
@@ -44,18 +46,18 @@ public class Printer {
             if(observations.size() > j) {
                 Observation observation = observations.get(j);
                 switch(observation.itype){
-                    case 2: //is always
+                    case Consts.OBS_ITYPE_DN: //is always
                         break;
-                    case 0: //is wall
+                    case Consts.OBS_ITYPE_WALL: //is wall
                         result += '+';
                         break;
-                    case 1: //is player
+                    case Consts.OBS_ITYPE_PLAYER: //is player
                         result += 'X';
                         break;
-                    case 3: //is hole
+                    case Consts.OBS_ITYPE_HOLE: //is hole
                         result += 'O';
                         break;
-                    case 4: //is box
+                    case Consts.OBS_ITYPE_BOX: //is box
                         result += '#';
                         break;
                     default:

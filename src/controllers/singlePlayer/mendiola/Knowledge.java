@@ -38,9 +38,9 @@ public class Knowledge {
         public int compare(Theory a, Theory b) {
             //at same match, compare by utility
             if(Math.abs(a.match - b.match) < 1)
-                return (new Float(b.getUtility()).compareTo(a.getUtility()));
+                return (new Double(b.getUtility()).compareTo(a.getUtility()));
             else
-                return (new Float(b.match).compareTo(a.match));
+                return (new Double(b.match).compareTo(a.match));
         }
     }
 }

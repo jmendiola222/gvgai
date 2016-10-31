@@ -70,9 +70,12 @@ public class Test
 
         // 1. This starts a game, in a level, played by a human.
 //        ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
-        
-        // 2. This plays a game in a level by the controller.
-        ArcadeMachine.runOneGame(game, level1, visuals, mine, recordActionsFile, seed, 0);
+
+
+        for(int i = 0; i< 10; i++) {
+            System.out.print("Game " + i + ": ");
+            ArcadeMachine.runOneGame(game, level1, visuals, mine, recordActionsFile, seed, 0);
+        }
 
         // 3. This replays a game from an action file previously recorded
         //String readActionsFile = recordActionsFile;
