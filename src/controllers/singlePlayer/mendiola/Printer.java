@@ -25,21 +25,9 @@ public class Printer {
         System.out.println("/******** KNOWLEDGE START ********/");
         List<Theory> toPrint = new ArrayList<Theory>();
         for (Theory t : knowledge.theories) {
-            int size = t.getScenario().grid[0].length;
-            for (int j = 0; j < size; j++) {
-                for (int i = 0; i < t.getScenario().grid.length; i++) {
-                    ArrayList<Observation> cell = t.getScenario().grid[i][j];
-                    for (int k = 0; k < 2; k++) {
-                        if (cell.size() > k) {
-                            Observation observation = cell.get(k);
-                            if (observation.itype == Consts.OBS_ITYPE_PLAYER &&
-                                    observation.position.equals(playerPos)) {
-                                toPrint.add(t);
-                            }
-                        }
-                    }
-                }
-            }
+            Vector2d tPlayerPos = t.getScenario().playerPos;
+            if(tPlayerPos.dist(playerPos) == 0)
+                toPrint.add(t);
         }
         for (Theory t : toPrint) {
             printTheory(t, true);

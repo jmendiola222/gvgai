@@ -21,7 +21,7 @@ public class Agent extends AbstractPlayer{
 	 */
 	protected int block_size;
 
-	protected Knowledge knoledge;
+	protected Knowledge knowledge;
 
 	private Scanner scanner;
 	Random randomGenerator = new Random();
@@ -31,6 +31,8 @@ public class Agent extends AbstractPlayer{
 
 	private List<Theory> lastChangeStateTheorys = new LinkedList<Theory>();
 	private int noChangesCounter = 0;
+	private Plan planInExecution;
+	private int theoryIndex;
 
 	/**
 	 * Public constructor with state observation and time due.
@@ -41,7 +43,7 @@ public class Agent extends AbstractPlayer{
 	{
 		grid = so.getObservationGrid();
 		block_size = so.getBlockSize();
-		knoledge = Knowledge.getKnoledge();
+		knowledge = Knowledge.getKnoledge();
 		scanner = new Scanner(System.in);
 
 		double h = so.getWorldDimension().getHeight() - 80.0;
@@ -64,19 +66,19 @@ public class Agent extends AbstractPlayer{
 				UserCmd.ignoreX = (int)Math.pow(10, ignoreExp);
 				break;
 			case "f": //full
-				Printer.printKnowledge(this.knoledge, true, true);
+				Printer.printKnowledge(knowledge, true, true);
 				break;
 			case "k": //knowledge
-				Printer.printKnowledge(this.knoledge, false, true);
+				Printer.printKnowledge(knowledge, false, true);
 			case "s": //scenario
-				Printer.printKnowledge(this.knoledge, false, false);
+				Printer.printKnowledge(knowledge, false, false);
 				break;
 			case "q":
 				throw new QuiteGame();
 			case "p":
 				int x = Integer.parseInt(cmd.substring(1,2));
 				int y = Integer.parseInt(cmd.substring(2,3));
-				Printer.printKnowledgeByPlayerPos(this.knoledge, new Vector2d(40.0 + x * 40.0, 40.0 + y * 40.0));
+				Printer.printKnowledgeByPlayerPos(knowledge, new Vector2d(40.0 + x * 40.0, 40.0 + y * 40.0));
 				break;
 			default:
 				break;
@@ -92,37 +94,14 @@ public class Agent extends AbstractPlayer{
 	 */
 	public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
 
-		world = new SokobanWorld(stateObs);
-
-		Scenario scenario = world.getCurrentScenario();
-
-		List<Theory> theories =  knoledge.getMatchingTheories(scenario, 1);
-
 		userInteract();
 		/*try {
 			Thread.sleep(100);
 		}catch (Exception ex){}*/
 
-		double demand = 1F;
-		Theory theory = null;
+		world = new SokobanWorld(stateObs);
 
-		while(theory == null){
-			theory = pickOneWorthIt(theories, demand);
-
-			if(theory == null){
-				theory = buildNewTheory(scenario, stateObs, theories);
-				if(theory == null)
-					demand = 0;
-				else
-					knoledge.addTheory(theory);
-			} else {
-				if(theory.getUtility() < 0.01){
-					System.out.println("!!! Picking a BAD theory" + theory);
-				}
-			}
-			demand *= 0.5;
-		}
-
+		Theory theory = getTheory(knowledge, world);
 		executeTheory(stateObs, theory);
 		theory.k++;
 
@@ -135,6 +114,43 @@ public class Agent extends AbstractPlayer{
 
 		//Printer.printTheory(theory, false);
 		return theory.getAction();
+	}
+
+	public Theory getTheory(Knowledge knowledge, SokobanWorld world){
+
+		Theory theory = null;
+		if(planInExecution != null)
+			theory = planInExecution.getTheory(theoryIndex++);
+
+		if(theory == null) {
+			this.theoryIndex = 0;
+			//if(knowledge.theories.size() < Consts.MIN_KNOWLEDGE_TO_PLAN)
+			planInExecution = new Plan();
+
+			Scenario scenario = world.getCurrentScenario();
+			List<Theory> theories =  knowledge.getMatchingTheories(scenario, 1);
+
+			double demand = 1F;
+			while (theory == null) {
+				theory = pickOneWorthIt(theories, demand);
+
+				if (theory == null) {
+					theory = buildNewTheory(scenario, world, theories);
+					if (theory == null)
+						demand = 0;
+					else
+						knowledge.addTheory(theory);
+				} else {
+					if (theory.getUtility() < 0.01) {
+						System.out.println("!!! Picking a BAD theory" + theory);
+					}
+				}
+				demand *= 0.5;
+			}
+			planInExecution.theories.add(theory);
+			planInExecution.getTheory(theoryIndex++);
+		}
+		return theory;
 	}
 
 	private void tainTheories(List<Theory> theories, int tainFactor){
@@ -171,10 +187,10 @@ public class Agent extends AbstractPlayer{
 		return theories.get(0);
 	}
 
-	private Theory buildNewTheory(Scenario scenario, StateObservation stateObs, List<Theory> theories){
+	private Theory buildNewTheory(Scenario scenario, SokobanWorld world, List<Theory> theories){
 		Theory theory = new Theory(scenario);
 
-		ArrayList<Types.ACTIONS> actions = stateObs.getAvailableActions();
+		ArrayList<Types.ACTIONS> actions = world.stateObservation.getAvailableActions();
 
 		for(Theory t : theories){
 			if(t.match > 0) break;

@@ -10,8 +10,6 @@ import java.util.ArrayList;
  */
 public class Scenario {
 
-    public ArrayList<Observation>[][] grid;
-
     public int[][] board;
 
     public String hash = "";
@@ -19,7 +17,6 @@ public class Scenario {
     public Vector2d playerPos;
 
     public Scenario(ArrayList<Observation>[][] grid){
-        this.grid = grid;
         mapGrid(grid);
     }
 
