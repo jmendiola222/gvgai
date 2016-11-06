@@ -33,6 +33,7 @@ public class Agent extends AbstractPlayer{
 	private int noChangesCounter = 0;
 	private Plan planInExecution;
 	private int theoryIndex;
+	private List<Types.ACTIONS> forceActions = new LinkedList<>();
 
 	/**
 	 * Public constructor with state observation and time due.
@@ -80,6 +81,18 @@ public class Agent extends AbstractPlayer{
 				int y = Integer.parseInt(cmd.substring(2,3));
 				Printer.printKnowledgeByPlayerPos(knowledge, new Vector2d(40.0 + x * 40.0, 40.0 + y * 40.0));
 				break;
+			case "u":
+				this.forceActions.add(Types.ACTIONS.ACTION_UP);
+				break;
+			case "d":
+				this.forceActions.add(Types.ACTIONS.ACTION_DOWN);
+				break;
+			case "l":
+				this.forceActions.add(Types.ACTIONS.ACTION_LEFT);
+				break;
+			case "r":
+				this.forceActions.add(Types.ACTIONS.ACTION_RIGHT);
+				break;
 			default:
 				break;
 		}
@@ -98,6 +111,11 @@ public class Agent extends AbstractPlayer{
 		/*try {
 			Thread.sleep(100);
 		}catch (Exception ex){}*/
+		if(forceActions.size() > 0){
+			Types.ACTIONS action = forceActions.get(0);
+			forceActions.remove(0);
+			return action;
+		}
 
 		world = new SokobanWorld(stateObs);
 
@@ -124,33 +142,61 @@ public class Agent extends AbstractPlayer{
 
 		if(theory == null) {
 			this.theoryIndex = 0;
-			//if(knowledge.theories.size() < Consts.MIN_KNOWLEDGE_TO_PLAN)
-			planInExecution = new Plan();
-
-			Scenario scenario = world.getCurrentScenario();
-			List<Theory> theories =  knowledge.getMatchingTheories(scenario, 1);
-
-			double demand = 1F;
-			while (theory == null) {
-				theory = pickOneWorthIt(theories, demand);
-
-				if (theory == null) {
-					theory = buildNewTheory(scenario, world, theories);
-					if (theory == null)
-						demand = 0;
-					else
-						knowledge.addTheory(theory);
-				} else {
-					if (theory.getUtility() < 0.01) {
-						System.out.println("!!! Picking a BAD theory" + theory);
-					}
-				}
-				demand *= 0.5;
+			this.planInExecution = null;
+			if(knowledge.theories.size() > Consts.MIN_KNOWLEDGE_TO_PLAN) {
+				planInExecution = tryToBuildPlan(knowledge, world);
 			}
-			planInExecution.theories.add(theory);
-			planInExecution.getTheory(theoryIndex++);
+			if(planInExecution == null) {
+
+				Scenario scenario = world.getCurrentScenario();
+				List<Theory> theories = knowledge.getMatchingTheories(scenario, 1, true);
+
+				double demand = 1F;
+				while (theory == null) {
+					theory = pickOneWorthIt(theories, demand);
+
+					if (theory == null) {
+						theory = buildNewTheory(scenario, world, theories);
+						if (theory == null)
+							demand = 0;
+						else
+							knowledge.addTheory(theory);
+					} else {
+						if (theory.getUtility() < 0.01) {
+							System.out.println("!!! Picking a BAD theory" + theory);
+						}
+					}
+					demand *= 0.5;
+				}
+				planInExecution = new Plan(theory);
+			}
+			theory = planInExecution.getTheory(theoryIndex++);
 		}
 		return theory;
+	}
+
+	public Plan tryToBuildPlan(Knowledge knowledge, SokobanWorld world){
+		List<Theory> theories = knowledge.getHighUtilityTheories(1);
+		//TODO sort by proximity
+
+		boolean found = false;
+		List<Theory> roadMap = new LinkedList<>();
+		Scenario origin = world.getCurrentScenario();
+		for(int i = 0; i < theories.size() && !found; i++) {
+			Theory eval = theories.get(i);
+			List<Theory> matching = knowledge.getMatchingTheories(origin, 0.5, true);
+			for (Theory match : matching) {
+				if (match.prediction.isExact(eval.scenario)){
+					found = true;
+					roadMap.add(match);
+					roadMap.add(eval);
+					break;
+				}
+			}
+		}
+		if(found)
+			return new Plan(roadMap);
+		return null;
 	}
 
 	private void tainTheories(List<Theory> theories, int tainFactor){
@@ -158,7 +204,7 @@ public class Agent extends AbstractPlayer{
 		//System.out.println("Taining " + tainFactor);
 		for(int i = theories.size() - 1; i >= 0; i--){
 			Theory theory = theories.get(i);
-			//System.out.print(" - Theory [" + theory.id + "] " + theory.getUtility());
+			//Printer.printTheory(theory, true);
 			theory.sucessFactor = theory.sucessFactor + (tainFactor * (theory.sucessFactor / Math.pow(sucessDelta++,2)));
 			//System.out.println(" -> " + theory.getUtility());
 		}
@@ -220,44 +266,51 @@ public class Agent extends AbstractPlayer{
 		StateObservation stCopy = stateObs.copy();
 		stCopy.advance(theory.getAction());
 
-		evaluateTheory(theory, stCopy);
+		evaluateTheory(theory, new SokobanWorld(stCopy));
 		theory.p++;
 	}
 
-	private void evaluateTheory(Theory theory, StateObservation resultSO){
-		if(resultSO.getGameWinner() == Types.WINNER.PLAYER_LOSES) {
+	private void evaluateTheory(Theory theory, SokobanWorld resultWorld){
+		if(resultWorld.stateObservation.getGameWinner() == Types.WINNER.PLAYER_LOSES) {
 			theory.setUtility(0);
 			return;
 		}
 
-		Scenario resultScenario = new Scenario(resultSO.getObservationGrid());
+		Scenario resultScenario = new Scenario(resultWorld.stateObservation.getObservationGrid());
 		if(theory.prediction == null) {
 			theory.prediction = resultScenario;
 		}
-		double compare = theory.getScenario().compare(resultScenario);
+		double compare = theory.getScenario().compare(resultScenario, null);
 		if(compare == 0) {
 			theory.setUtility(0);
 		} else {
 
-			Utility utility = calculateStateUtility(world);
-			Utility newUtility = calculateStateUtility(new SokobanWorld(resultSO));
-
-			//Has moved boxes
-			if (Math.abs(utility.boxDist - newUtility.boxDist) > 0) {
-				this.noChangesCounter = 0;
-				if (this.lastChangeStateTheorys.size() > 4)
-					this.lastChangeStateTheorys.remove(0);
-				this.lastChangeStateTheorys.add(theory);
-			} else {
-				this.noChangesCounter++;
-			}
-
-			theory.setUtility(0.5 + (utility.value() - newUtility.value()));
-
-			if (resultSO.getGameWinner() == Types.WINNER.PLAYER_WINS) {
+			if (resultWorld.stateObservation.getGameWinner() == Types.WINNER.PLAYER_WINS) {
+				theory.setUtility(5);
+				addLastChangeStateTheory(theory);
 				tainTheories(this.lastChangeStateTheorys, 1);
+			} else {
+
+				Utility utility = calculateStateUtility(world);
+				Utility newUtility = calculateStateUtility(resultWorld);
+
+				//Has moved boxes
+				if (Math.abs(utility.boxDist - newUtility.boxDist) > 0) {
+					addLastChangeStateTheory(theory);
+				} else {
+					this.noChangesCounter++;
+				}
+
+				theory.setUtility(0.5 + (utility.value() - newUtility.value()));
 			}
 		}
+	}
+
+	private void addLastChangeStateTheory(Theory theory){
+		this.noChangesCounter = 0;
+		if (this.lastChangeStateTheorys.size() > 4)
+			this.lastChangeStateTheorys.remove(0);
+		this.lastChangeStateTheorys.add(theory);
 	}
 
 	private Utility calculateStateUtility(SokobanWorld world){

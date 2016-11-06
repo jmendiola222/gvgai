@@ -21,9 +21,11 @@ public class Scenario {
     }
 
     private void mapGrid(ArrayList<Observation>[][] grid){
-        board = new int[grid.length][grid[0].length];
-        for (int i = 0; i < grid.length; i++) {
-            for (int j = 0; j < grid[i].length; j++) {
+        int high = grid.length;
+        int width = grid[0].length;
+        board = new int[high][width];
+        for (int i = 0; i < high; i++) {
+            for (int j = 0; j < width; j++) {
                 int value = Consts.OBS_ITYPE_DN;
                 for(int k = 0; k < grid[i][j].size(); k++){
                     Observation obs = grid[i][j].get(k);
@@ -43,16 +45,28 @@ public class Scenario {
                     }
                 }
                 board[j][i] = value;
-                hash += String.valueOf(value);
+                if(i > 0 && i < high - 1 && j > 0 && j < width -1 ) {
+                    if(j == width - 1)
+                        hash += ',';
+                    hash += String.valueOf(value);
+                }
             }
         }
     }
 
-    public float compare(Scenario scenario){
+    public String toString(){
+        String result = hash.replaceAll(String.valueOf(Consts.OBS_ITYPE_DN), " ");
+        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_WALL), "+");
+        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_HOLE), "O");
+        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_BOX), "#");
+        return result;
+    }
+
+    public double compare(Scenario scenario, Double threshold){
         int playerDist = (int) this.playerPos.dist(scenario.playerPos);
         if(this.hash.equals(scenario.hash))
             return playerDist;
-        float result = 0;
+        double result = 0;
         for (int i = 0; i < this.board.length; i++) {
             int[] row = this.board[i];
             int[] row2 = scenario.board[i];
@@ -60,9 +74,18 @@ public class Scenario {
                 int val1 = row[j];
                 int val2 = row2[j];
                 result += Math.abs(val1 - val2);
+                if(threshold != null && threshold < result)
+                    return result;
             }
         }
         return playerDist + result;
     }
 
+    public boolean isExact(Scenario scenario) {
+        if(!this.hash.equals(scenario.hash))
+            return false;
+        if((int) this.playerPos.dist(scenario.playerPos) > 0)
+            return false;
+        return true;
+    }
 }

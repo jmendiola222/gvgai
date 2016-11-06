@@ -29,21 +29,32 @@ public class Knowledge {
         this.theories.add(theory);
     }
 
-    public List<Theory> getMatchingTheories(Scenario scenario, float threshold){
+    public List<Theory> getMatchingTheories(Scenario scenario, double threshold, boolean excludeNoUtil){
         List<Theory> result = new LinkedList<Theory>();
         for(int i = 0; i < theories.size(); i++){
             Theory myTheory = theories.get(i);
-            float match = myTheory.getScenario().compare(scenario);
-            if(match < threshold){
+            double match = myTheory.getScenario().compare(scenario, threshold);
+            if(match < threshold && (!excludeNoUtil || (excludeNoUtil && myTheory.getUtility() > 0))){
                 myTheory.match = match;
                 result.add(myTheory);
             }
         }
-        Collections.sort(result, new TheoryComp());
+        Collections.sort(result, new CompareByMatch());
         return result;
     }
 
-    class TheoryComp implements  Comparator<Theory> {
+    public List<Theory> getHighUtilityTheories(double thresholdUtility){
+        List<Theory> result = new LinkedList<Theory>();
+        for(int i = 0; i < theories.size(); i++){
+            Theory myTheory = theories.get(i);
+            if(myTheory.getUtility() >= thresholdUtility)
+                result.add(myTheory);
+        }
+        Collections.sort(result, new CompareByUtility());
+        return result;
+    }
+
+    class CompareByMatch implements  Comparator<Theory> {
 
         public int compare(Theory a, Theory b) {
             //at same match, compare by utility
@@ -51,6 +62,12 @@ public class Knowledge {
                 return (new Double(b.getUtility()).compareTo(a.getUtility()));
             else
                 return (new Double(b.match).compareTo(a.match));
+        }
+    }
+
+    class CompareByUtility implements Comparator<Theory> {
+        public int compare(Theory a, Theory b) {
+            return (new Double(b.getUtility()).compareTo(a.getUtility()));
         }
     }
 }
