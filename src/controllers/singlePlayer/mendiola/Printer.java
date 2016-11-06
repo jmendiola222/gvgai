@@ -1,8 +1,10 @@
 package controllers.singlePlayer.mendiola;
 
 import core.game.Observation;
+import tools.Vector2d;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by julian on 30/10/16.
@@ -14,59 +16,90 @@ public class Printer {
         for (Theory t : knowledge.theories) {
             if(includeUseless && t.getUtility() == 0d)
                 continue;
-            printTheory(t);
-            if (withScenarios)
-                printGrid(t.getScenario().grid);
+            printTheory(t, withScenarios);
         }
         System.out.println("/******** KNOWLEDGE END ********/");
     }
 
-    public static void printTheory(Theory theory){
-        System.out.println(theory);
+    public static void printKnowledgeByPlayerPos(Knowledge knowledge, Vector2d playerPos) {
+        System.out.println("/******** KNOWLEDGE START ********/");
+        List<Theory> toPrint = new ArrayList<Theory>();
+        for (Theory t : knowledge.theories) {
+            int size = t.getScenario().grid[0].length;
+            for (int j = 0; j < size; j++) {
+                for (int i = 0; i < t.getScenario().grid.length; i++) {
+                    ArrayList<Observation> cell = t.getScenario().grid[i][j];
+                    for (int k = 0; k < 2; k++) {
+                        if (cell.size() > k) {
+                            Observation observation = cell.get(k);
+                            if (observation.itype == Consts.OBS_ITYPE_PLAYER &&
+                                    observation.position.equals(playerPos)) {
+                                toPrint.add(t);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (Theory t : toPrint) {
+            printTheory(t, true);
+        }
+        System.out.println("/******** KNOWLEDGE END ********/");
     }
 
-    public static void printGrid(ArrayList<Observation>[][] grid)
+    public static void printTheory(Theory theory, boolean withScenario){
+        System.out.println(theory);
+        if(withScenario) {
+            printGrid(theory.getScenario(), theory.prediction);
+        }
+    }
+
+    private static void printRow(int j,int[] grid, Vector2d playerPos){
+        System.out.print("[");
+        for (int i = 0; i < grid.length; i++) {
+            if(playerPos.dist(i,j) == 0.0)
+                System.out.print("X,");
+            else
+                System.out.print(toPrintObs(grid[i]) + ",");
+        }
+    }
+
+    public static void printGrid(Scenario grid, Scenario grid2)
     {
-        int size = grid[0].length;
+        int size = grid.board[0].length;
 
         for (int j = 0; j < size; j++) {
-            System.out.print("[");
-            for (int i = 0; i < grid.length; i++) {
-                ArrayList<Observation> cell = grid[i][j];
-                System.out.print("" + toPrintObs(cell) + ",");
+            printRow(j, grid.board[j], grid.playerPos);
+            if(grid2 != null) {
+                System.out.print("]  ====>  ");
+                printRow(j, grid.board[j], grid2.playerPos);
             }
             System.out.println("]");
         }
         System.out.println("----------------------------");
     }
 
-    public static String toPrintObs(ArrayList<Observation> observations) {
+    public static String toPrintObs(int value) {
         String result = "";
-        for (int j = 0; j < 2; j++) {
-            if(observations.size() > j) {
-                Observation observation = observations.get(j);
-                switch(observation.itype){
-                    case Consts.OBS_ITYPE_DN: //is always
-                        break;
-                    case Consts.OBS_ITYPE_WALL: //is wall
-                        result += '+';
-                        break;
-                    case Consts.OBS_ITYPE_PLAYER: //is player
-                        result += 'X';
-                        break;
-                    case Consts.OBS_ITYPE_HOLE: //is hole
-                        result += 'O';
-                        break;
-                    case Consts.OBS_ITYPE_BOX: //is box
-                        result += '#';
-                        break;
-                    default:
-                        result += observation.itype;
-                        break;
-                }
-            }else{
+        switch(value){
+            case Consts.OBS_ITYPE_DN: //is always
+                result = " ";
+                break;
+            case Consts.OBS_ITYPE_WALL: //is wall
+                result += '+';
+                break;
+            case Consts.OBS_ITYPE_PLAYER: //is player
+                result += 'X';
+                break;
+            case Consts.OBS_ITYPE_HOLE: //is hole
+                result += 'O';
+                break;
+            case Consts.OBS_ITYPE_BOX: //is box
+                result += '#';
+                break;
+            default:
                 result += ' ';
-            }
+                break;
         }
         return result;
     }

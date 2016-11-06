@@ -14,6 +14,16 @@ public class Knowledge {
 
     public List<Theory> theories = new LinkedList<Theory>();
 
+    private static Knowledge theKnowledge = null;
+
+    private Knowledge(){ }
+
+    public static Knowledge getKnoledge(){
+        if(theKnowledge == null)
+            theKnowledge = new Knowledge();
+        return theKnowledge;
+    }
+
     public void addTheory(Theory theory){
         theory.id = count++;
         this.theories.add(theory);

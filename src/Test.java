@@ -1,5 +1,6 @@
 import java.util.Random;
 
+import controllers.singlePlayer.mendiola.QuiteGame;
 import core.ArcadeMachine;
 
 /**
@@ -24,7 +25,7 @@ public class Test
         String sampleGAController = "controllers.singlePlayer.sampleGA.Agent";
         String sampleOLETSController = "controllers.singlePlayer.olets.Agent";
         String repeatOLETS = "controllers.singlePlayer.repeatOLETS.Agent";
-        String mine = "controllers.singlePlayer.mendiola.Agent";
+        String myController = "controllers.singlePlayer.mendiola.Agent";
 
         //Available Generators
         String randomLevelGenerator = "levelGenerators.randomLevelGenerator.LevelGenerator";
@@ -72,9 +73,14 @@ public class Test
 //        ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
 
 
-        for(int i = 0; i< 10; i++) {
+        //ArcadeMachine.runGames(game, new String[]{level1}, 100, myController, null);
+        for(int i = 0; i < 10000; i++) {
             System.out.print("Game " + i + ": ");
-            ArcadeMachine.runOneGame(game, level1, visuals, mine, recordActionsFile, seed, 0);
+            try {
+                ArcadeMachine.runOneGame(game, level1, visuals, myController, recordActionsFile, seed, 0);
+            }catch(QuiteGame quit){
+                System.out.println("Result Looooser");
+            }
         }
 
         // 3. This replays a game from an action file previously recorded

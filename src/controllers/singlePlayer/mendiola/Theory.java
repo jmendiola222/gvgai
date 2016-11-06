@@ -9,9 +9,11 @@ public class Theory {
 
     public long id;
 
-    private Scenario scenario;
+    public Scenario scenario;
+    public Scenario prediction;
 
     private Types.ACTIONS action;
+    public double sucessFactor = 1;
     private double utility;
     public int k; //used
     public int p; //success
@@ -37,7 +39,7 @@ public class Theory {
     }
 
     public double getUtility() {
-        return utility;
+        return Math.max(sucessFactor * utility, 0);
     }
 
     public void setUtility(double utility) {
@@ -45,7 +47,7 @@ public class Theory {
     }
 
     public String toString(){
-        return "Theory [" + this.id + "]: " + this.action + " | utility: " + this.utility +
+        return "Theory [" + this.id + "]: " + this.action + " | utility: " + this.getUtility() +
                 " | p: " + this.p + " | k: " + this.k;
     }
 }

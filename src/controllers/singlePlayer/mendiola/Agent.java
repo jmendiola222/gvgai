@@ -7,10 +7,7 @@ import ontology.Types;
 import tools.ElapsedCpuTimer;
 import tools.Vector2d;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Scanner;
+import java.util.*;
 
 public class Agent extends AbstractPlayer{
 
@@ -26,15 +23,13 @@ public class Agent extends AbstractPlayer{
 
 	protected Knowledge knoledge;
 
-	private int ignoreX = 0;
 	private Scanner scanner;
 	Random randomGenerator = new Random();
 	private SokobanWorld world;
 
 	private double maxDist;
 
-	private Theory lastChangeStateTheory;
-	private double prevWorldBoxDist;
+	private List<Theory> lastChangeStateTheorys = new LinkedList<Theory>();
 	private int noChangesCounter = 0;
 
 	/**
@@ -46,7 +41,7 @@ public class Agent extends AbstractPlayer{
 	{
 		grid = so.getObservationGrid();
 		block_size = so.getBlockSize();
-		knoledge = new Knowledge();
+		knoledge = Knowledge.getKnoledge();
 		scanner = new Scanner(System.in);
 
 		double h = so.getWorldDimension().getHeight() - 80.0;
@@ -55,31 +50,33 @@ public class Agent extends AbstractPlayer{
 	}
 
 	private void userInteract(){
-		if(this.ignoreX > 0)
+		if(UserCmd.ignoreX > 0)
 		{
-			ignoreX--;
+			UserCmd.ignoreX--;
 			return;
 		}
 		//  prompt for
 		System.out.print("Enter cmd: ");
 		String cmd = scanner.next();
-		switch (cmd){
-			case "1":
-				this.ignoreX = 10;
-				break;
-			case "2":
-				this.ignoreX = 100;
-				break;
-			case "3":
-				this.ignoreX = 1000;
+		switch (cmd.substring(0, 1)){
+			case "i":
+				int ignoreExp = Integer.parseInt(cmd.substring(1,2));
+				UserCmd.ignoreX = (int)Math.pow(10, ignoreExp);
 				break;
 			case "f": //full
 				Printer.printKnowledge(this.knoledge, true, true);
 				break;
 			case "k": //knowledge
-				Printer.printKnowledge(this.knoledge, false, false);
+				Printer.printKnowledge(this.knoledge, false, true);
 			case "s": //scenario
 				Printer.printKnowledge(this.knoledge, false, false);
+				break;
+			case "q":
+				throw new QuiteGame();
+			case "p":
+				int x = Integer.parseInt(cmd.substring(1,2));
+				int y = Integer.parseInt(cmd.substring(2,3));
+				Printer.printKnowledgeByPlayerPos(this.knoledge, new Vector2d(40.0 + x * 40.0, 40.0 + y * 40.0));
 				break;
 			default:
 				break;
@@ -102,41 +99,76 @@ public class Agent extends AbstractPlayer{
 		List<Theory> theories =  knoledge.getMatchingTheories(scenario, 1);
 
 		userInteract();
+		/*try {
+			Thread.sleep(100);
+		}catch (Exception ex){}*/
 
 		double demand = 1F;
 		Theory theory = null;
 
 		while(theory == null){
 			theory = pickOneWorthIt(theories, demand);
+
 			if(theory == null){
 				theory = buildNewTheory(scenario, stateObs, theories);
-				if(theory != null)
+				if(theory == null)
+					demand = 0;
+				else
 					knoledge.addTheory(theory);
+			} else {
+				if(theory.getUtility() < 0.01){
+					System.out.println("!!! Picking a BAD theory" + theory);
+				}
 			}
-			demand *= 0.75;
+			demand *= 0.5;
 		}
 
 		executeTheory(stateObs, theory);
 		theory.k++;
 
 		if(noChangesCounter == 100){
-			//TODO make it stop
+			//penalize theories that led me to stall
+			tainTheories(this.lastChangeStateTheorys, -1);
+			//TODO make it stop better
+			throw new QuiteGame();
 		}
 
-		try {
-			Thread.sleep(200);
-		}catch (Exception ex){}
-
-		//Printer.printTheory(theory);
+		//Printer.printTheory(theory, false);
 		return theory.getAction();
+	}
+
+	private void tainTheories(List<Theory> theories, int tainFactor){
+		double sucessDelta = 2;
+		//System.out.println("Taining " + tainFactor);
+		for(int i = theories.size() - 1; i >= 0; i--){
+			Theory theory = theories.get(i);
+			//System.out.print(" - Theory [" + theory.id + "] " + theory.getUtility());
+			theory.sucessFactor = theory.sucessFactor + (tainFactor * (theory.sucessFactor / Math.pow(sucessDelta++,2)));
+			//System.out.println(" -> " + theory.getUtility());
+		}
 	}
 
 	private Theory pickOneWorthIt(List<Theory> theories, double threshold){
 		if (theories.size() == 0 || theories.get(0).getUtility() <= threshold) return null;
 
+		double accumUtil = 0;
+		double base = 0; //Very low probability for zero Utility
 		//As it's ordered by relevance, we weight the first ones
-		int index = (int) (Math.pow(randomGenerator.nextDouble(), 2) * theories.size());
-		return theories.get(index);
+		int size = Math.min(theories.size(), 5);
+		for(int i = 0; i < size; i ++){
+			accumUtil += base + Math.max(theories.get(i).getUtility(), 0);
+		}
+		double[] norm = new double[size];
+		for(int i = 0; i < size; i ++){
+			norm[i] = (base + Math.max(theories.get(i).getUtility(), 0)) / accumUtil;
+		}
+
+		double rnd = randomGenerator.nextDouble();
+		for(int i = 0; i < size; i++) {
+			rnd -= norm[i];
+			if(rnd <= 0) return theories.get(i);
+		}
+		return theories.get(0);
 	}
 
 	private Theory buildNewTheory(Scenario scenario, StateObservation stateObs, List<Theory> theories){
@@ -180,30 +212,39 @@ public class Agent extends AbstractPlayer{
 		if(resultSO.getGameWinner() == Types.WINNER.PLAYER_LOSES) {
 			theory.setUtility(0);
 			return;
-		} else if (resultSO.getGameWinner() == Types.WINNER.PLAYER_WINS) {
-			theory.setUtility(1);
-			return;
 		}
 
-		double compare = theory.getScenario().compare(new Scenario(resultSO.getObservationGrid()));
-		if(compare == 0)
+		Scenario resultScenario = new Scenario(resultSO.getObservationGrid());
+		if(theory.prediction == null) {
+			theory.prediction = resultScenario;
+		}
+		double compare = theory.getScenario().compare(resultScenario);
+		if(compare == 0) {
 			theory.setUtility(0);
-		else {
-			if(this.prevWorldBoxDist == world.boxDistance)
-				this.noChangesCounter++;
-			else {
+		} else {
+
+			Utility utility = calculateStateUtility(world);
+			Utility newUtility = calculateStateUtility(new SokobanWorld(resultSO));
+
+			//Has moved boxes
+			if (Math.abs(utility.boxDist - newUtility.boxDist) > 0) {
 				this.noChangesCounter = 0;
-				this.lastChangeStateTheory = theory;
-				this.prevWorldBoxDist = world.boxDistance;
+				if (this.lastChangeStateTheorys.size() > 4)
+					this.lastChangeStateTheorys.remove(0);
+				this.lastChangeStateTheorys.add(theory);
+			} else {
+				this.noChangesCounter++;
 			}
 
-			double currentProx = calculateStateProximity(world);
-			double newProx = calculateStateProximity(new SokobanWorld(resultSO));
-			theory.setUtility(0.5 + (currentProx - newProx));
+			theory.setUtility(0.5 + (utility.value() - newUtility.value()));
+
+			if (resultSO.getGameWinner() == Types.WINNER.PLAYER_WINS) {
+				tainTheories(this.lastChangeStateTheorys, 1);
+			}
 		}
 	}
 
-	private double calculateStateProximity(SokobanWorld world){
+	private Utility calculateStateUtility(SokobanWorld world){
 
 		ArrayList<Observation> boxes = world.getBoxes();
 		double boxAcum = 0;
@@ -215,8 +256,15 @@ public class Agent extends AbstractPlayer{
 				boxAcum += box.position.dist(hole.position);
 			playerAcum += box.position.dist(myPosition);
 		}
-		world.boxDistance = (boxAcum / (double)(boxes.size() * holes.size())) / maxDist;
+		double boxDist = (boxAcum / (double)(boxes.size() * holes.size())) / maxDist;
 		double playerDist = (playerAcum / (double)(boxes.size())) / maxDist;
-		return world.boxDistance * 10 + playerDist;
+		return new Utility(boxDist, playerDist);
+	}
+
+	class Utility {
+		public double boxDist;
+		public double playerDist;
+		public Utility(double boxDist, double playerDist) { this.boxDist = boxDist; this.playerDist = playerDist; }
+		public double value() { return boxDist * 10 + playerDist; }
 	}
 }
