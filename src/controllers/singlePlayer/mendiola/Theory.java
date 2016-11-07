@@ -7,7 +7,7 @@ import ontology.Types;
  */
 public class Theory {
 
-    public long id;
+    public long id = 0L;
 
     public Scenario scenario;
     public Scenario prediction;

@@ -1,5 +1,6 @@
-import java.util.Random;
+import java.util.*;
 
+import controllers.singlePlayer.mendiola.Graphs.*;
 import controllers.singlePlayer.mendiola.QuiteGame;
 import core.ArcadeMachine;
 
@@ -72,6 +73,38 @@ public class Test
         // 1. This starts a game, in a level, played by a human.
 //        ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
 
+        /*ArrayList<Vertex> nodes = new ArrayList<Vertex>();
+        ArrayList<Edge> edges = new ArrayList<Edge>();
+
+        nodes.add(new Vertex("A"));
+        nodes.add(new Vertex("B"));
+        nodes.add(new Vertex("C"));
+        nodes.add(new Vertex("D"));
+        nodes.add(new Vertex("E"));
+
+        edges.add(new Edge("1", nodes.get(3), nodes.get(1)));
+        edges.add(new Edge("2", nodes.get(1), nodes.get(0)));
+        edges.add(new Edge("3", nodes.get(3), nodes.get(2)));
+        edges.add(new Edge("4", nodes.get(2), nodes.get(4)));
+        edges.add(new Edge("5", nodes.get(4), nodes.get(0)));
+
+        Graph graph = new Graph(nodes, edges);
+        DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
+        dijkstra.execute(nodes.get(3));
+        LinkedList<Vertex> path = dijkstra.getPath(nodes.get(0));
+        if(path != null) {
+            Vertex prev = null;
+            for (Vertex vertex : path) {
+                if(prev != null){
+                    Edge edge = dijkstra.getConection(prev, vertex);
+                    System.out.print( " ----" + edge.getId() + "-----> ");
+                }
+                prev = vertex;
+                System.out.print(vertex);
+            }
+        } else {
+            System.out.println("NOT FOUND");
+        }*/
 
         //ArcadeMachine.runGames(game, new String[]{level1}, 100, myController, null);
         for(int i = 0; i < 10000; i++) {

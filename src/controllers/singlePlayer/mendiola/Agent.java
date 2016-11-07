@@ -44,7 +44,7 @@ public class Agent extends AbstractPlayer{
 	{
 		grid = so.getObservationGrid();
 		block_size = so.getBlockSize();
-		knowledge = Knowledge.getKnoledge();
+		knowledge = Knowledge.getKnowledge();
 		scanner = new Scanner(System.in);
 
 		double h = so.getWorldDimension().getHeight() - 80.0;
@@ -122,6 +122,8 @@ public class Agent extends AbstractPlayer{
 		Theory theory = getTheory(knowledge, world);
 		executeTheory(stateObs, theory);
 		theory.k++;
+		if(theory.id == 0)
+			knowledge.addTheory(theory);
 
 		if(noChangesCounter == 100){
 			//penalize theories that led me to stall
@@ -149,7 +151,7 @@ public class Agent extends AbstractPlayer{
 			if(planInExecution == null) {
 
 				Scenario scenario = world.getCurrentScenario();
-				List<Theory> theories = knowledge.getMatchingTheories(scenario, 1, true);
+				List<Theory> theories = knowledge.getMatchingTheories(scenario, 1, false);
 
 				double demand = 1F;
 				while (theory == null) {
@@ -159,8 +161,6 @@ public class Agent extends AbstractPlayer{
 						theory = buildNewTheory(scenario, world, theories);
 						if (theory == null)
 							demand = 0;
-						else
-							knowledge.addTheory(theory);
 					} else {
 						if (theory.getUtility() < 0.01) {
 							System.out.println("!!! Picking a BAD theory" + theory);
