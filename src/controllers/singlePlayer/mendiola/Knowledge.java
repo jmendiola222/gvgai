@@ -17,6 +17,8 @@ public class Knowledge {
     public Map<String, List<Theory>> scenarios = new HashMap<>();
 
     public Graph graph = null;
+    private SHash dijkstraOriginId;
+    private DijkstraAlgorithm dijkstra;
 
     private static Knowledge theKnowledge = null;
 
@@ -35,7 +37,10 @@ public class Knowledge {
         this.theories.add(theory);
         this.theoriesMap.put(new Long(theory.id), theory);
         //Add to graph
-        this.graph.addElem(theory.scenario.hash, theory.prediction.hash, String.valueOf(theory.id));
+        boolean changed = this.graph.addElem(theory.scenario.hash, theory.prediction.hash, String.valueOf(theory.id));
+        // If new node in the graph, we need to reset dijstra
+        if(changed)
+            dijkstraOriginId = null;
     }
 
     public List<Theory> getMatchingTheories(Scenario scenario, double threshold, boolean excludeNoUtil){
@@ -65,6 +70,37 @@ public class Knowledge {
 
     public Theory getById(Long id){
         return this.theoriesMap.get(id);
+    }
+
+    private DijkstraAlgorithm getDijkstraFor(Scenario origin){
+        if(dijkstraOriginId == null || !dijkstraOriginId.equals(origin.hash)) {
+            dijkstraOriginId = origin.hash;
+            Vertex vertex = this.graph.getVertexById(dijkstraOriginId);
+            if(vertex == null)
+                return null;
+            dijkstra = new DijkstraAlgorithm(graph);
+            dijkstra.execute(vertex);
+        }
+        return dijkstra;
+    }
+
+    public List<Theory> tryGetMinPath(Scenario origin, Scenario goal){
+        Vertex goalVertex = graph.getVertexById(goal.hash);
+        if(goalVertex == null) return null;
+        DijkstraAlgorithm dijkstra = getDijkstraFor(origin);
+        if(dijkstra == null) return null;
+        LinkedList<Vertex> path = dijkstra.getPath(goalVertex);
+        if(path == null || path.isEmpty()) return null;
+        List<Theory> roadMap = new LinkedList<>();
+        Vertex start = path.getFirst();
+        for (int i = 1; i < path.size() ; i++) {
+            Vertex curr = path.get(i);
+            Edge connection = dijkstra.getConnection(start, curr);
+            Long theoryId = Long.valueOf(connection.getId());
+            roadMap.add(theoriesMap.get(theoryId));
+            start = curr;
+        }
+        return roadMap;
     }
 
     class CompareByMatch implements  Comparator<Theory> {

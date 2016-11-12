@@ -12,7 +12,7 @@ public class Scenario {
 
     public int[][] board;
 
-    public String hash = "";
+    public SHash hash = new SHash();
 
     public Vector2d playerPos;
 
@@ -23,6 +23,7 @@ public class Scenario {
     private void mapGrid(ArrayList<Observation>[][] grid){
         int high = grid.length;
         int width = grid[0].length;
+        String hash = "";
         board = new int[high][width];
         for (int i = 0; i < high; i++) {
             for (int j = 0; j < width; j++) {
@@ -34,7 +35,6 @@ public class Scenario {
                             break;
                         case Consts.OBS_ITYPE_PLAYER:
                             playerPos = new Vector2d(obs.position.x / 40, obs.position.y / 40);
-                            break;
                         case Consts.OBS_ITYPE_WALL: //is wall
                         case Consts.OBS_ITYPE_HOLE: //is hole
                         case Consts.OBS_ITYPE_BOX: //is box
@@ -52,13 +52,14 @@ public class Scenario {
                 }
             }
         }
+        this.hash.hash = hash;
     }
 
     public String toString(){
-        String result = hash.replaceAll(String.valueOf(Consts.OBS_ITYPE_DN), " ");
-        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_WALL), "+");
-        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_HOLE), "O");
-        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_BOX), "#");
+        String result = this.hash.hash.replaceAll(String.valueOf(Consts.OBS_ITYPE_DN), "_,");
+        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_WALL), "+,");
+        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_HOLE), "O,");
+        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_BOX), "#,");
         return result;
     }
 
@@ -73,6 +74,9 @@ public class Scenario {
             for (int j = 0; j < row.length; j++) {
                 int val1 = row[j];
                 int val2 = row2[j];
+                // Ignores player position
+                val1 = (val1 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val1;
+                val2 = (val2 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val2;
                 result += Math.abs(val1 - val2);
                 if(threshold != null && threshold < result)
                     return result;
@@ -82,10 +86,6 @@ public class Scenario {
     }
 
     public boolean isExact(Scenario scenario) {
-        if(!this.hash.equals(scenario.hash))
-            return false;
-        if((int) this.playerPos.dist(scenario.playerPos) > 0)
-            return false;
-        return true;
+        return this.hash.equals(scenario.hash);
     }
 }

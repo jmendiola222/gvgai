@@ -179,23 +179,16 @@ public class Agent extends AbstractPlayer{
 		List<Theory> theories = knowledge.getHighUtilityTheories(1);
 		//TODO sort by proximity
 
-		boolean found = false;
-		List<Theory> roadMap = new LinkedList<>();
+		List<Theory> roadMap;
 		Scenario origin = world.getCurrentScenario();
-		for(int i = 0; i < theories.size() && !found; i++) {
-			Theory eval = theories.get(i);
-			List<Theory> matching = knowledge.getMatchingTheories(origin, 0.5, true);
-			for (Theory match : matching) {
-				if (match.prediction.isExact(eval.scenario)){
-					found = true;
-					roadMap.add(match);
-					roadMap.add(eval);
-					break;
-				}
+
+		for(int i = 0; i < theories.size(); i++) {
+			Theory goal = theories.get(i);
+			roadMap = knowledge.tryGetMinPath(origin, goal.getScenario());
+			if(roadMap != null ) {
+				return new Plan(roadMap);
 			}
 		}
-		if(found)
-			return new Plan(roadMap);
 		return null;
 	}
 
