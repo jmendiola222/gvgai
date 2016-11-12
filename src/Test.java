@@ -2,6 +2,7 @@ import java.util.*;
 
 import controllers.singlePlayer.mendiola.Graphs.*;
 import controllers.singlePlayer.mendiola.QuiteGame;
+import controllers.singlePlayer.mendiola.UserCmd;
 import core.ArcadeMachine;
 
 /**
@@ -70,46 +71,11 @@ public class Test
         String recordLevelFile = generateLevelPath + games[gameIdx] + "_glvl.txt";
         String recordActionsFile = null;//"actions_" + games[gameIdx] + "_lvl" + levelIdx + "_" + seed + ".txt"; //where to record the actions executed. null if not to save.
 
-        // 1. This starts a game, in a level, played by a human.
-//        ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
-
-        /*ArrayList<Vertex> nodes = new ArrayList<Vertex>();
-        ArrayList<Edge> edges = new ArrayList<Edge>();
-
-        nodes.add(new Vertex("A"));
-        nodes.add(new Vertex("B"));
-        nodes.add(new Vertex("C"));
-        nodes.add(new Vertex("D"));
-        nodes.add(new Vertex("E"));
-
-        edges.add(new Edge("1", nodes.get(3), nodes.get(1)));
-        edges.add(new Edge("2", nodes.get(1), nodes.get(0)));
-        edges.add(new Edge("3", nodes.get(3), nodes.get(2)));
-        edges.add(new Edge("4", nodes.get(2), nodes.get(4)));
-        edges.add(new Edge("5", nodes.get(4), nodes.get(0)));
-
-        Graph graph = new Graph(nodes, edges);
-        DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
-        dijkstra.execute(nodes.get(3));
-        LinkedList<Vertex> path = dijkstra.getPath(nodes.get(0));
-        if(path != null) {
-            Vertex prev = null;
-            for (Vertex vertex : path) {
-                if(prev != null){
-                    Edge edge = dijkstra.getConection(prev, vertex);
-                    System.out.print( " ----" + edge.getId() + "-----> ");
-                }
-                prev = vertex;
-                System.out.print(vertex);
-            }
-        } else {
-            System.out.println("NOT FOUND");
-        }*/
-
         //ArcadeMachine.runGames(game, new String[]{level1}, 100, myController, null);
         for(int i = 0; i < 10000; i++) {
             System.out.print("Game " + i + ": ");
             try {
+                visuals = UserCmd.visual;
                 ArcadeMachine.runOneGame(game, level1, visuals, myController, recordActionsFile, seed, 0);
             }catch(QuiteGame quit){
                 System.out.println("Result Looooser");

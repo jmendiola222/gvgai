@@ -93,6 +93,9 @@ public class Agent extends AbstractPlayer{
 			case "r":
 				this.forceActions.add(Types.ACTIONS.ACTION_RIGHT);
 				break;
+			case "v":
+				UserCmd.visual = !UserCmd.visual;
+				break;
 			default:
 				break;
 		}

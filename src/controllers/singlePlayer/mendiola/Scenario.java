@@ -24,7 +24,7 @@ public class Scenario {
         int high = grid.length;
         int width = grid[0].length;
         String hash = "";
-        board = new int[high][width];
+        board = new int[width][high];
         for (int i = 0; i < high; i++) {
             for (int j = 0; j < width; j++) {
                 int value = Consts.OBS_ITYPE_DN;
