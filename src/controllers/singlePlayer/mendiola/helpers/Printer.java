@@ -1,6 +1,9 @@
-package controllers.singlePlayer.mendiola;
+package controllers.singlePlayer.mendiola.helpers;
 
-import core.game.Observation;
+import controllers.singlePlayer.mendiola.Knowledge;
+import controllers.singlePlayer.mendiola.Scenario;
+import controllers.singlePlayer.mendiola.Theory;
+import controllers.singlePlayer.mendiola.helpers.Consts;
 import tools.Vector2d;
 
 import java.util.ArrayList;

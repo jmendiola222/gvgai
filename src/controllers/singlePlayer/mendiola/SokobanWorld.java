@@ -1,10 +1,10 @@
 package controllers.singlePlayer.mendiola;
 
+import controllers.singlePlayer.mendiola.helpers.Consts;
 import core.game.Observation;
 import core.game.StateObservation;
 import tools.Vector2d;
 
-import java.awt.*;
 import java.util.ArrayList;
 
 /**
@@ -18,11 +18,12 @@ public class SokobanWorld {
     private ArrayList<Observation> boxes;
 
     public SokobanWorld(StateObservation stateObservation){
-        this.stateObservation = stateObservation;
+        this.stateObservation = stateObservation.copy();
     }
 
     public Scenario getCurrentScenario(){
-        return new Scenario(this.stateObservation.copy().getObservationGrid());
+        Vector2d plaPos = this.normalizePos(this.getMyPlayerPosition());
+        return new Scenario(this.stateObservation.getObservationGrid(), plaPos);
     }
 
     private ArrayList<Observation> filterByItype(ArrayList<Observation> array, int iType){
@@ -48,6 +49,10 @@ public class SokobanWorld {
 
     public Vector2d getMyPlayerPosition(){
         return this.stateObservation.getAvatarPosition();
+    }
+
+    public Vector2d normalizePos(Vector2d vector){
+        return new Vector2d(vector.x / 40 , vector.y / 40);
     }
 
     public Observation getOtherPlayer(){

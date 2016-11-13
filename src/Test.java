@@ -1,8 +1,7 @@
 import java.util.*;
 
-import controllers.singlePlayer.mendiola.Graphs.*;
-import controllers.singlePlayer.mendiola.QuiteGame;
-import controllers.singlePlayer.mendiola.UserCmd;
+import controllers.singlePlayer.mendiola.helpers.QuiteGame;
+import controllers.singlePlayer.mendiola.helpers.UserCmd;
 import core.ArcadeMachine;
 
 /**
@@ -35,7 +34,7 @@ public class Test
         String constructiveLevelGenerator = "levelGenerators.constructiveLevelGenerator.LevelGenerator";
         
         //Available games:
-        String gamesPath = "examples/gridphysics/";
+        String gamesPath = "examples/gridphysics/sokoban/";
         String games[] = new String[]{};
         String generateLevelPath = "examples/gridphysics/";
 
@@ -68,15 +67,18 @@ public class Test
         String game = gamesPath + games[gameIdx] + ".txt";
         String level1 = gamesPath + games[gameIdx] + "_lvl" + levelIdx +".txt";
 
+
         String recordLevelFile = generateLevelPath + games[gameIdx] + "_glvl.txt";
         String recordActionsFile = null;//"actions_" + games[gameIdx] + "_lvl" + levelIdx + "_" + seed + ".txt"; //where to record the actions executed. null if not to save.
 
         //ArcadeMachine.runGames(game, new String[]{level1}, 100, myController, null);
+        levelIdx = 0;
         for(int i = 0; i < 10000; i++) {
             System.out.print("Game " + i + ": ");
             try {
+                String level = gamesPath + games[gameIdx] + "_train_lvl" + levelIdx +".txt";
                 visuals = UserCmd.visual;
-                ArcadeMachine.runOneGame(game, level1, visuals, myController, recordActionsFile, seed, 0);
+                ArcadeMachine.runOneGame(game, level, visuals, myController, recordActionsFile, seed, 0);
             }catch(QuiteGame quit){
                 System.out.println("Result Looooser");
             }

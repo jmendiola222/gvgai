@@ -1,6 +1,6 @@
 package controllers.singlePlayer.mendiola.Graphs;
 
-import controllers.singlePlayer.mendiola.SHash;
+import controllers.singlePlayer.mendiola.helpers.SHash;
 
 public class Vertex {
     final private SHash id;

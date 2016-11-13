@@ -1,5 +1,6 @@
 package controllers.singlePlayer.mendiola;
 
+import controllers.singlePlayer.mendiola.helpers.*;
 import core.game.Observation;
 import core.game.StateObservation;
 import core.player.AbstractPlayer;
@@ -34,6 +35,7 @@ public class Agent extends AbstractPlayer{
 	private Plan planInExecution;
 	private int theoryIndex;
 	private List<Types.ACTIONS> forceActions = new LinkedList<>();
+	private int gameTick;
 
 	/**
 	 * Public constructor with state observation and time due.
@@ -110,6 +112,7 @@ public class Agent extends AbstractPlayer{
 	 */
 	public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
 
+		this.gameTick = stateObs.getGameTick();
 		userInteract();
 		/*try {
 			Thread.sleep(100);
@@ -178,8 +181,20 @@ public class Agent extends AbstractPlayer{
 		return theory;
 	}
 
+	public double demandUtility(){
+		// starts in 1
+		double result = 1;
+		// the higher steps without changing nothing, higher the entropy
+		double entropy = (noChangesCounter / 200.0); //higher val = 0.5
+		// the higher the gameTick, higher the entropy
+		entropy += this.gameTick / 4000.0;
+		result += (randomGenerator.nextInt(10)) * entropy;
+		return result;
+	}
+
 	public Plan tryToBuildPlan(Knowledge knowledge, SokobanWorld world){
-		List<Theory> theories = knowledge.getHighUtilityTheories(1);
+		double demand = demandUtility();
+		List<Theory> theories = knowledge.getHighUtilityTheories(demand);
 		//TODO sort by proximity
 
 		List<Theory> roadMap;
@@ -263,7 +278,7 @@ public class Agent extends AbstractPlayer{
 		stCopy.advance(theory.getAction());
 
 		evaluateTheory(theory, new SokobanWorld(stCopy));
-		theory.p++;
+		theory.k++;
 	}
 
 	private void evaluateTheory(Theory theory, SokobanWorld resultWorld){
@@ -272,12 +287,13 @@ public class Agent extends AbstractPlayer{
 			return;
 		}
 
-		Scenario resultScenario = new Scenario(resultWorld.stateObservation.getObservationGrid());
+		Vector2d playerPos = resultWorld.normalizePos(resultWorld.getMyPlayerPosition());
+		Scenario resultScenario = new Scenario(resultWorld.stateObservation.getObservationGrid(), playerPos);
 		if(theory.prediction == null) {
 			theory.prediction = resultScenario;
 		}
-		double compare = theory.getScenario().compare(resultScenario, null);
-		if(compare == 0) {
+		Utility compare = theory.getScenario().compare(resultScenario, null);
+		if(compare.value() == 0) {
 			theory.setUtility(0);
 		} else {
 
@@ -324,12 +340,5 @@ public class Agent extends AbstractPlayer{
 		double boxDist = (boxAcum / (double)(boxes.size() * holes.size())) / maxDist;
 		double playerDist = (playerAcum / (double)(boxes.size())) / maxDist;
 		return new Utility(boxDist, playerDist);
-	}
-
-	class Utility {
-		public double boxDist;
-		public double playerDist;
-		public Utility(double boxDist, double playerDist) { this.boxDist = boxDist; this.playerDist = playerDist; }
-		public double value() { return boxDist * 10 + playerDist; }
 	}
 }

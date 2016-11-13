@@ -1,4 +1,4 @@
-package controllers.singlePlayer.mendiola;
+package controllers.singlePlayer.mendiola.helpers;
 
 /**
  * Created by julian on 02/11/16.

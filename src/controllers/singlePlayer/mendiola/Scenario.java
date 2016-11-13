@@ -1,5 +1,8 @@
 package controllers.singlePlayer.mendiola;
 
+import controllers.singlePlayer.mendiola.helpers.Consts;
+import controllers.singlePlayer.mendiola.helpers.SHash;
+import controllers.singlePlayer.mendiola.helpers.Utility;
 import core.game.Observation;
 import tools.Vector2d;
 
@@ -16,17 +19,23 @@ public class Scenario {
 
     public Vector2d playerPos;
 
-    public Scenario(ArrayList<Observation>[][] grid){
-        mapGrid(grid);
+    public Scenario(ArrayList<Observation>[][] grid, Vector2d playerPos){
+        mapGrid(grid, playerPos, 5);
     }
 
-    private void mapGrid(ArrayList<Observation>[][] grid){
-        int high = grid.length;
-        int width = grid[0].length;
+    private void mapGrid(ArrayList<Observation>[][] grid, Vector2d fromCenter, int boxSize){
+        int high = (boxSize > 0) ? boxSize : grid.length;
+        int width = (boxSize > 0) ? boxSize : grid[0].length;
+        int top, bottom, startX, startY;
+        startX = Math.max(0, (int)fromCenter.x -  boxSize / 2);
+        startY = Math.max(0, (int)fromCenter.y -  boxSize / 2);
+        top = Math.min(startX + high, grid.length);
+        bottom = Math.min(startY + width, grid[0].length);
+
         String hash = "";
         board = new int[width][high];
-        for (int i = 0; i < high; i++) {
-            for (int j = 0; j < width; j++) {
+        for (int i = startX; i < top; i++) {
+            for (int j = startY; j < bottom; j++) {
                 int value = Consts.OBS_ITYPE_DN;
                 for(int k = 0; k < grid[i][j].size(); k++){
                     Observation obs = grid[i][j].get(k);
@@ -44,12 +53,12 @@ public class Scenario {
                             break;
                     }
                 }
-                board[j][i] = value;
-                if(i > 0 && i < high - 1 && j > 0 && j < width -1 ) {
-                    if(j == width - 1)
-                        hash += ',';
+                board[j-startY][i-startX] = value;
+                //if(i > 0 && i < high - 1 && j > 0 && j < width -1 ) {
+                //    if(j == width - 1)
+                //        hash += ',';
                     hash += String.valueOf(value);
-                }
+                //}
             }
         }
         this.hash.hash = hash;
@@ -63,11 +72,12 @@ public class Scenario {
         return result;
     }
 
-    public double compare(Scenario scenario, Double threshold){
-        int playerDist = (int) this.playerPos.dist(scenario.playerPos);
+    public Utility compare(Scenario scenario, Double threshold){
+        double playerDist = this.playerPos.dist(scenario.playerPos);
+        Utility result = new Utility(0, playerDist);
         if(this.hash.equals(scenario.hash))
-            return playerDist;
-        double result = 0;
+            return result;
+        double acumm = 0;
         for (int i = 0; i < this.board.length; i++) {
             int[] row = this.board[i];
             int[] row2 = scenario.board[i];
@@ -77,12 +87,15 @@ public class Scenario {
                 // Ignores player position
                 val1 = (val1 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val1;
                 val2 = (val2 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val2;
-                result += Math.abs(val1 - val2);
-                if(threshold != null && threshold < result)
+                acumm += Math.abs(val1 - val2);
+                if(threshold != null && threshold < acumm) {
+                    result.boxDist = acumm;
                     return result;
+                }
             }
         }
-        return playerDist + result;
+        result.boxDist = acumm;
+        return result;
     }
 
     public boolean isExact(Scenario scenario) {

@@ -3,6 +3,8 @@ package controllers.singlePlayer.mendiola;
 import java.util.*;
 
 import controllers.singlePlayer.mendiola.Graphs.*;
+import controllers.singlePlayer.mendiola.helpers.SHash;
+import controllers.singlePlayer.mendiola.helpers.Utility;
 
 /**
  * Created by julian on 23/10/16.
@@ -47,7 +49,8 @@ public class Knowledge {
         List<Theory> result = new LinkedList<>();
         for(int i = 0; i < theories.size(); i++){
             Theory myTheory = theories.get(i);
-            double match = myTheory.getScenario().compare(scenario, threshold);
+            Utility util = myTheory.getScenario().compare(scenario, threshold);
+            double match = util.value();
             if(match < threshold && (!excludeNoUtil || (excludeNoUtil && myTheory.getUtility() > 0))){
                 myTheory.match = match;
                 result.add(myTheory);
