@@ -2,7 +2,7 @@ package controllers.singlePlayer.mendiola;
 
 import controllers.singlePlayer.mendiola.helpers.Consts;
 import controllers.singlePlayer.mendiola.helpers.SHash;
-import controllers.singlePlayer.mendiola.helpers.Utility;
+import controllers.singlePlayer.mendiola.helpers.CompareResult;
 import core.game.Observation;
 import tools.Vector2d;
 
@@ -23,6 +23,13 @@ public class Scenario {
         mapGrid(grid, playerPos, 5);
     }
 
+    private Scenario(int[][] board, Vector2d playerPos, String hash) {
+        this.board = board;
+        this.playerPos = new Vector2d(playerPos.x, playerPos.y);
+        this.hash = new SHash();
+        this.hash.hash = hash;
+    }
+
     private void mapGrid(ArrayList<Observation>[][] grid, Vector2d fromCenter, int boxSize){
         int high = (boxSize > 0) ? boxSize : grid.length;
         int width = (boxSize > 0) ? boxSize : grid[0].length;
@@ -32,7 +39,6 @@ public class Scenario {
         top = Math.min(startX + high, grid.length);
         bottom = Math.min(startY + width, grid[0].length);
 
-        String hash = "";
         board = new int[width][high];
         for (int i = startX; i < top; i++) {
             for (int j = startY; j < bottom; j++) {
@@ -54,14 +60,9 @@ public class Scenario {
                     }
                 }
                 board[j-startY][i-startX] = value;
-                //if(i > 0 && i < high - 1 && j > 0 && j < width -1 ) {
-                //    if(j == width - 1)
-                //        hash += ',';
-                    hash += String.valueOf(value);
-                //}
             }
         }
-        this.hash.hash = hash;
+        this.hash.hash = buildHash(board);
     }
 
     public String toString(){
@@ -72,9 +73,9 @@ public class Scenario {
         return result;
     }
 
-    public Utility compare(Scenario scenario, Double threshold){
+    public CompareResult compare(Scenario scenario, Double threshold){
         double playerDist = this.playerPos.dist(scenario.playerPos);
-        Utility result = new Utility(0, playerDist);
+        CompareResult result = new CompareResult(0, playerDist);
         if(this.hash.equals(scenario.hash))
             return result;
         double acumm = 0;
@@ -87,7 +88,8 @@ public class Scenario {
                 // Ignores player position
                 val1 = (val1 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val1;
                 val2 = (val2 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val2;
-                acumm += Math.abs(val1 - val2);
+                if( (val1 != Consts.OBS_IGNORE) && (val2 != Consts.OBS_IGNORE))
+                    acumm += Math.abs(val1 - val2);
                 if(threshold != null && threshold < acumm) {
                     result.boxDist = acumm;
                     return result;
@@ -100,5 +102,51 @@ public class Scenario {
 
     public boolean isExact(Scenario scenario) {
         return this.hash.equals(scenario.hash);
+    }
+
+    public int getHigh(){
+        return this.board.length;
+    }
+
+    public int getWidht(){
+        return this.board[0].length;
+    }
+
+    private String buildHash(int[][] board){
+        String result = "";
+        for(int i = 0; i < board.length; i++) {
+            for (int j = 0; j < board[0].length; j++) {
+                result += String.valueOf(board[i][j]);
+            }
+        }
+        return result;
+    }
+
+    private static int[] emptyOf(int size){
+        int[] result = new int[size];
+        for(int i = 0; i < size; i++) {
+            result[i] = Consts.OBS_IGNORE;
+        }
+        return result;
+    }
+
+    public static Scenario mutate(Scenario scenario1, Scenario scenario2){
+        int high = Math.max(scenario1.getHigh(), scenario2.getHigh());
+        int width = Math.max(scenario1.getWidht(), scenario2.getWidht());
+        int[][] grid = new int[width][high];
+        String hash = "";
+        for(int i = 0; i < high; i++) {
+            int[] row1 = (scenario1.board.length > i) ? scenario1.board[i] : emptyOf(width);
+            int[] row2 = (scenario2.board.length > i) ? scenario2.board[i] : emptyOf(width);
+            for(int j = 0; j < width; j++) {
+                int value1 = (row1.length > j) ? row1[j] : Consts.OBS_IGNORE;
+                int value2 = (row2.length > j) ? row2[j] : Consts.OBS_IGNORE;
+                int fillWith = (value1 == value2) ? value1 : Consts.OBS_IGNORE;
+                grid[i][j] = fillWith;
+                hash += String.valueOf(fillWith);
+            }
+        }
+        Scenario result = new Scenario(grid, scenario1.playerPos, hash);
+        return result;
     }
 }

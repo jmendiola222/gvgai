@@ -5,6 +5,7 @@ package controllers.singlePlayer.mendiola.helpers;
  */
 public class Consts {
 
+    public static final int OBS_IGNORE = 5;
     public static final int OBS_ITYPE_WALL = 0;
     public static final int OBS_ITYPE_PLAYER = 1;
     public static final int OBS_ITYPE_DN = 2;

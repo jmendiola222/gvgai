@@ -4,7 +4,7 @@ import java.util.*;
 
 import controllers.singlePlayer.mendiola.Graphs.*;
 import controllers.singlePlayer.mendiola.helpers.SHash;
-import controllers.singlePlayer.mendiola.helpers.Utility;
+import controllers.singlePlayer.mendiola.helpers.CompareResult;
 
 /**
  * Created by julian on 23/10/16.
@@ -49,7 +49,7 @@ public class Knowledge {
         List<Theory> result = new LinkedList<>();
         for(int i = 0; i < theories.size(); i++){
             Theory myTheory = theories.get(i);
-            Utility util = myTheory.getScenario().compare(scenario, threshold);
+            CompareResult util = myTheory.getScenario().compare(scenario, threshold);
             double match = util.value();
             if(match < threshold && (!excludeNoUtil || (excludeNoUtil && myTheory.getUtility() > 0))){
                 myTheory.match = match;
@@ -67,7 +67,7 @@ public class Knowledge {
             if(myTheory.getUtility() >= thresholdUtility)
                 result.add(myTheory);
         }
-        Collections.sort(result, new CompareByUtility());
+        Collections.sort(result, new CompareByRelevance());
         return result;
     }
 
@@ -111,15 +111,15 @@ public class Knowledge {
         public int compare(Theory a, Theory b) {
             //at same match, compare by utility
             if(Math.abs(a.match - b.match) < 1)
-                return (new Double(b.getUtility()).compareTo(a.getUtility()));
+                return (new Double(b.getRelevance()).compareTo(a.getRelevance()));
             else
                 return (new Double(b.match).compareTo(a.match));
         }
     }
 
-    class CompareByUtility implements Comparator<Theory> {
+    class CompareByRelevance implements Comparator<Theory> {
         public int compare(Theory a, Theory b) {
-            return (new Double(b.getUtility()).compareTo(a.getUtility()));
+            return (new Double(b.getRelevance()).compareTo(a.getRelevance()));
         }
     }
 }

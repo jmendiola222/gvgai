@@ -7,6 +7,6 @@ public class UserCmd {
 
     public static int ignoreX = 0;
 
-    public static boolean visual = false;
+    public static boolean visual = true;
 
 }

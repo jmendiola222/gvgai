@@ -289,10 +289,20 @@ public class Agent extends AbstractPlayer{
 
 		Vector2d playerPos = resultWorld.normalizePos(resultWorld.getMyPlayerPosition());
 		Scenario resultScenario = new Scenario(resultWorld.stateObservation.getObservationGrid(), playerPos);
-		if(theory.prediction == null) {
+
+		if (theory.prediction == null) {
 			theory.prediction = resultScenario;
+			theory.p = 1;
+		} else {
+			CompareResult predictionCompare = theory.prediction.compare(resultScenario, null);
+			if (predictionCompare.value() == 0) {
+				theory.p++;
+			} else {
+				buildMutantTheories(theory, resultScenario);
+			}
 		}
-		Utility compare = theory.getScenario().compare(resultScenario, null);
+
+		CompareResult compare = theory.getScenario().compare(resultScenario, null);
 		if(compare.value() == 0) {
 			theory.setUtility(0);
 		} else {
@@ -303,19 +313,37 @@ public class Agent extends AbstractPlayer{
 				tainTheories(this.lastChangeStateTheorys, 1);
 			} else {
 
-				Utility utility = calculateStateUtility(world);
-				Utility newUtility = calculateStateUtility(resultWorld);
+				CompareResult compareResult = calculateStateUtility(world);
+				CompareResult newCompareResult = calculateStateUtility(resultWorld);
 
 				//Has moved boxes
-				if (Math.abs(utility.boxDist - newUtility.boxDist) > 0) {
+				if (Math.abs(compareResult.boxDist - newCompareResult.boxDist) > 0) {
 					addLastChangeStateTheory(theory);
 				} else {
 					this.noChangesCounter++;
 				}
 
-				theory.setUtility(0.5 + (utility.value() - newUtility.value()));
+				theory.setUtility(0.5 + (compareResult.value() - newCompareResult.value()));
 			}
 		}
+	}
+
+	private void buildMutantTheories(Theory origin, Scenario resultScenario){
+		Theory exact = new Theory(origin.getScenario());
+		exact.k = 1;
+		exact.p = 1;
+		exact.prediction = resultScenario;
+		exact.setAction(origin.getAction());
+		exact.setUtility(origin.getUtility());
+		this.knowledge.addTheory(exact);
+
+		Theory mutant = new Theory(origin.getScenario());
+		mutant.k = 1;
+		mutant.p = 1;
+		mutant.prediction = Scenario.mutate(origin.prediction, resultScenario);
+		mutant.setAction(exact.getAction());
+		mutant.setUtility(origin.getUtility());
+		this.knowledge.addTheory(mutant);
 	}
 
 	private void addLastChangeStateTheory(Theory theory){
@@ -325,7 +353,7 @@ public class Agent extends AbstractPlayer{
 		this.lastChangeStateTheorys.add(theory);
 	}
 
-	private Utility calculateStateUtility(SokobanWorld world){
+	private CompareResult calculateStateUtility(SokobanWorld world){
 
 		ArrayList<Observation> boxes = world.getBoxes();
 		double boxAcum = 0;
@@ -339,6 +367,6 @@ public class Agent extends AbstractPlayer{
 		}
 		double boxDist = (boxAcum / (double)(boxes.size() * holes.size())) / maxDist;
 		double playerDist = (playerAcum / (double)(boxes.size())) / maxDist;
-		return new Utility(boxDist, playerDist);
+		return new CompareResult(boxDist, playerDist);
 	}
 }

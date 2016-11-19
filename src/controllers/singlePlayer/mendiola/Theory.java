@@ -42,6 +42,11 @@ public class Theory {
         return Math.max(sucessFactor * utility, 0);
     }
 
+    public double getRelevance() {
+        // Gives more importance to success rate
+        return getUtility() * Math.pow(sucessRate(), 2);
+    }
+
     public void setUtility(double utility) {
         this.utility = utility;
     }
@@ -49,5 +54,9 @@ public class Theory {
     public String toString(){
         return "Theory [" + this.id + "]: " + this.action + " | utility: " + this.getUtility() +
                 " | p: " + this.p + " | k: " + this.k;
+    }
+
+    public double sucessRate(){
+        return (double)p / (double)k;
     }
 }

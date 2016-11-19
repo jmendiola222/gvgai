@@ -3,6 +3,7 @@ import java.util.*;
 import controllers.singlePlayer.mendiola.helpers.QuiteGame;
 import controllers.singlePlayer.mendiola.helpers.UserCmd;
 import core.ArcadeMachine;
+import ontology.Types;
 
 /**
  * Created with IntelliJ IDEA.
@@ -73,12 +74,19 @@ public class Test
 
         //ArcadeMachine.runGames(game, new String[]{level1}, 100, myController, null);
         levelIdx = 0;
+        int trainLevel = 1;
         for(int i = 0; i < 10000; i++) {
             System.out.print("Game " + i + ": ");
+
             try {
+                levelIdx = i % trainLevel;
                 String level = gamesPath + games[gameIdx] + "_train_lvl" + levelIdx +".txt";
                 visuals = UserCmd.visual;
-                ArcadeMachine.runOneGame(game, level, visuals, myController, recordActionsFile, seed, 0);
+                double[] fullResults = ArcadeMachine.runOneGame(game, level, visuals, myController, recordActionsFile, seed, 0);
+                // Once it wins a level, we move it to the next
+                if(fullResults[0] == Types.WINNER.PLAYER_WINS.key() && levelIdx == (trainLevel-1)) {
+                    trainLevel++;
+                }
             }catch(QuiteGame quit){
                 System.out.println("Result Looooser");
             }
