@@ -33,13 +33,18 @@ public class Scenario {
     private void mapGrid(ArrayList<Observation>[][] grid, Vector2d fromCenter, int boxSize){
         int high = (boxSize > 0) ? boxSize : grid.length;
         int width = (boxSize > 0) ? boxSize : grid[0].length;
-        int top, bottom, startX, startY;
-        startX = Math.max(0, (int)fromCenter.x -  boxSize / 2);
-        startY = Math.max(0, (int)fromCenter.y -  boxSize / 2);
-        top = Math.min(startX + high, grid.length);
-        bottom = Math.min(startY + width, grid[0].length);
+        int top, bottom, startX, startY,fixX, fixY;
+        int deltaX = (int)fromCenter.x -  boxSize / 2;
+        int deltaY = (int)fromCenter.y -  boxSize / 2;
+        fixX = Math.min(deltaX, 0);
+        fixY = Math.min(deltaY, 0);
+        startX = Math.max(0, deltaX);
+        startY = Math.max(0, deltaY);
+        top = Math.min(high + fixX, grid.length);
+        bottom = Math.min(width + fixY, grid[0].length);
 
-        board = new int[width][high];
+        // 5 = IGNORES
+        board = new int[][] {{5,5,5,5,5},{5,5,5,5,5},{5,5,5,5,5},{5,5,5,5,5},{5,5,5,5,5}};
         for (int i = startX; i < top; i++) {
             for (int j = startY; j < bottom; j++) {
                 int value = Consts.OBS_ITYPE_DN;
@@ -59,18 +64,33 @@ public class Scenario {
                             break;
                     }
                 }
-                board[j-startY][i-startX] = value;
+                board[j-fixY][i-fixX] = value;
             }
         }
         this.hash.hash = buildHash(board);
     }
 
     public String toString(){
-        String result = this.hash.hash.replaceAll(String.valueOf(Consts.OBS_ITYPE_DN), "_,");
-        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_WALL), "+,");
-        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_HOLE), "O,");
-        result = result.replaceAll(String.valueOf(Consts.OBS_ITYPE_BOX), "#,");
-        return result;
+        StringBuilder sb = new StringBuilder();
+        sb.append("[[");
+        for(int i = 0; i < this.hash.hash.length(); i ++){
+            int value = Character.getNumericValue(this.hash.hash.charAt(i));
+            if(value == Consts.OBS_ITYPE_DN) {
+                sb.append("_");
+            } else if(value == Consts.OBS_IGNORE) {
+               sb.append("?");
+            } else if(value == Consts.OBS_ITYPE_WALL) {
+               sb.append("+");
+            } else if(value == Consts.OBS_ITYPE_HOLE) {
+               sb.append("0");
+            } else if(value == Consts.OBS_ITYPE_BOX) {
+               sb.append("#");
+            }
+            if(i+1 < this.hash.hash.length())
+                sb.append(((i + 1) % this.board.length == 0) ? "],[" : ",");
+        }
+       sb.append("]]");
+        return sb.toString();
     }
 
     public CompareResult compare(Scenario scenario, Double threshold){
@@ -89,14 +109,14 @@ public class Scenario {
                 val1 = (val1 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val1;
                 val2 = (val2 == Consts.OBS_ITYPE_PLAYER) ? Consts.OBS_ITYPE_DN : val2;
                 if( (val1 != Consts.OBS_IGNORE) && (val2 != Consts.OBS_IGNORE))
-                    acumm += Math.abs(val1 - val2);
+                    acumm += val1 != val2 ? 1 : 0;
                 if(threshold != null && threshold < acumm) {
-                    result.boxDist = acumm;
+                    result.scenarioDist = acumm;
                     return result;
                 }
             }
         }
-        result.boxDist = acumm;
+        result.scenarioDist = acumm;
         return result;
     }
 

@@ -88,6 +88,9 @@ public class Printer {
             case Consts.OBS_ITYPE_BOX: //is box
                 result += '#';
                 break;
+            case Consts.OBS_IGNORE: //don't care
+                result += '?';
+                break;
             default:
                 result += ' ';
                 break;

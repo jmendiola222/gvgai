@@ -13,7 +13,7 @@ public class Graph {
     public boolean addElem(SHash sourceId, SHash destId, String id){
         Vertex source = vertexes.get(sourceId);
         boolean changed = false;
-        if(source == null){
+        if (source == null) {
             changed = true;
             source = new Vertex(sourceId);
             vertexes.put(sourceId, source);

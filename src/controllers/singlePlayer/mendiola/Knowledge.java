@@ -14,9 +14,8 @@ public class Knowledge {
     private long count = 0;
 
     public List<Theory> theories = new LinkedList<>();
-    public Map<Long, Theory> theoriesMap = new HashMap<>();
-
-    public Map<String, List<Theory>> scenarios = new HashMap<>();
+    public Map<Long, Theory> indexById = new HashMap<>();
+    public Map<Integer, Theory> indexByHash = new HashMap<>();
 
     public Graph graph = null;
     private SHash dijkstraOriginId;
@@ -34,25 +33,39 @@ public class Knowledge {
         return theKnowledge;
     }
 
-    public void addTheory(Theory theory){
-        theory.id = count++;
-        this.theories.add(theory);
-        this.theoriesMap.put(new Long(theory.id), theory);
-        //Add to graph
-        boolean changed = this.graph.addElem(theory.scenario.hash, theory.prediction.hash, String.valueOf(theory.id));
-        // If new node in the graph, we need to reset dijstra
-        if(changed)
-            dijkstraOriginId = null;
+    public Theory exists(Theory theory) {
+        return this.indexByHash.get(theory.hashCode());
+    }
+
+    public Theory addTheory(Theory theory){
+
+        Theory exists = this.indexByHash.get(theory.hashCode());
+        if(exists == null) {
+            theory.id = count++;
+            this.theories.add(theory);
+            Collections.sort(this.theories, new CompareByRelevance());
+
+            this.indexById.put(new Long(theory.id), theory);
+            this.indexByHash.put(theory.hashCode(), theory);
+            //Add to graph, only worth theories
+            if (theory.getRelevance() > 0.1) {
+                boolean changed = this.graph.addElem(theory.scenario.hash, theory.prediction.hash, String.valueOf(theory.id));
+                // If new node in the graph, we need to reset dijstra
+                if (changed)
+                    dijkstraOriginId = null;
+            }
+            return theory;
+        }
+        return exists;
     }
 
     public List<Theory> getMatchingTheories(Scenario scenario, double threshold, boolean excludeNoUtil){
         List<Theory> result = new LinkedList<>();
-        for(int i = 0; i < theories.size(); i++){
+        for (int i = 0; i < theories.size(); i++) {
             Theory myTheory = theories.get(i);
-            CompareResult util = myTheory.getScenario().compare(scenario, threshold);
-            double match = util.value();
-            if(match < threshold && (!excludeNoUtil || (excludeNoUtil && myTheory.getUtility() > 0))){
-                myTheory.match = match;
+            CompareResult compareResult = myTheory.getScenario().compare(scenario, threshold);
+            if(compareResult.playerDist == 0 && compareResult.scenarioDist < threshold && (!excludeNoUtil || (excludeNoUtil && myTheory.getUtility() > 0))){
+                myTheory.match = compareResult.value();
                 result.add(myTheory);
             }
         }
@@ -60,19 +73,17 @@ public class Knowledge {
         return result;
     }
 
-    public List<Theory> getHighUtilityTheories(double thresholdUtility){
+    public List<Theory> getHighUtilityTheories(double thresholdUtility) {
         List<Theory> result = new LinkedList<>();
-        for(int i = 0; i < theories.size(); i++){
+        for (int i = 0; i < theories.size(); i++) {
             Theory myTheory = theories.get(i);
-            if(myTheory.getUtility() >= thresholdUtility)
+            if(myTheory.getRelevance() >= thresholdUtility)
                 result.add(myTheory);
+            else
+                break; // as it is sorted by relevance
         }
         Collections.sort(result, new CompareByRelevance());
         return result;
-    }
-
-    public Theory getById(Long id){
-        return this.theoriesMap.get(id);
     }
 
     private DijkstraAlgorithm getDijkstraFor(Scenario origin){
@@ -100,7 +111,7 @@ public class Knowledge {
             Vertex curr = path.get(i);
             Edge connection = dijkstra.getConnection(start, curr);
             Long theoryId = Long.valueOf(connection.getId());
-            roadMap.add(theoriesMap.get(theoryId));
+            roadMap.add(indexById.get(theoryId));
             start = curr;
         }
         return roadMap;

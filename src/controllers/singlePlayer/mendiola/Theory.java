@@ -7,7 +7,7 @@ import ontology.Types;
  */
 public class Theory {
 
-    public long id = 0L;
+    public Long id = 0L;
 
     public Scenario scenario;
     public Scenario prediction;
@@ -19,6 +19,11 @@ public class Theory {
     public int p; //success
 
     public double match;
+
+    @Override
+    public int hashCode() {
+        return this.scenario.hash.hashCode() + action.ordinal();
+    }
 
     public Theory(Scenario scenario){
         this.setScenario(scenario);

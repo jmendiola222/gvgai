@@ -37,7 +37,7 @@ public class Test
         //Available games:
         String gamesPath = "examples/gridphysics/sokoban/";
         String games[] = new String[]{};
-        String generateLevelPath = "examples/gridphysics/";
+        String generateLevelPath = "examples/gridphysics/sokoban/";
 
         //All public games
         games = new String[]{"aliens", "angelsdemons", "assemblyline", "avoidgeorge", "bait", //0-4
@@ -74,18 +74,33 @@ public class Test
 
         //ArcadeMachine.runGames(game, new String[]{level1}, 100, myController, null);
         levelIdx = 0;
-        int trainLevel = 1;
+        int trainLevel = 0;
+        int accumWins = 0;
         for(int i = 0; i < 10000; i++) {
-            System.out.print("Game " + i + ": ");
+            System.out.println("Game " + i + ": " + trainLevel + "/" + levelIdx + ":");
 
             try {
-                levelIdx = i % trainLevel;
-                String level = gamesPath + games[gameIdx] + "_train_lvl" + levelIdx +".txt";
+                //levelIdx = i % trainLevel;
+                //if(i % 50 == 0)
+                //    levelIdx = 0;
+                String level = gamesPath + "train" + trainLevel + "/" + games[gameIdx] + "_train_lvl" + levelIdx +".txt";
                 visuals = UserCmd.visual;
                 double[] fullResults = ArcadeMachine.runOneGame(game, level, visuals, myController, recordActionsFile, seed, 0);
                 // Once it wins a level, we move it to the next
-                if(fullResults[0] == Types.WINNER.PLAYER_WINS.key() && levelIdx == (trainLevel-1)) {
-                    trainLevel++;
+                if(fullResults[0] == Types.WINNER.PLAYER_WINS.key()) {
+                    accumWins++;
+                    // After winning ten times the same level, move to the nest one
+                    if(accumWins == 10) {
+                        accumWins = 0;
+                        if (levelIdx == 5) {
+                            levelIdx = 0;
+                            trainLevel++;
+                        System.out.println("Moving to next train level " + trainLevel + "/" + levelIdx);
+                        } else {
+                            levelIdx++;
+                            System.out.println("Moving to next train level " + trainLevel + "/" + levelIdx);
+                        }
+                    }
                 }
             }catch(QuiteGame quit){
                 System.out.println("Result Looooser");
@@ -107,9 +122,9 @@ public class Test
         
         //5. This starts a game, in a generated level created by a specific level generator
 
-        //if(ArcadeMachine.generateOneLevel(game, randomLevelGenerator, recordLevelFile)){
-        //	ArcadeMachine.playOneGeneratedLevel(game, recordActionsFile, recordLevelFile, seed);
-        //}
+        if(ArcadeMachine.generateOneLevel(game, randomLevelGenerator, recordLevelFile)){
+        	ArcadeMachine.playOneGeneratedLevel(game, recordActionsFile, recordLevelFile, seed);
+        }
         
         //6. This plays N games, in the first L levels, M times each. Actions to file optional (set saveActions to true).
 //        int N = 82, L = 5, M = 1;

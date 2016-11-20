@@ -127,11 +127,11 @@ public class Agent extends AbstractPlayer{
 
 		Theory theory = getTheory(knowledge, world);
 		executeTheory(stateObs, theory);
-		theory.k++;
 		if(theory.id == 0)
 			knowledge.addTheory(theory);
 
-		if(noChangesCounter == 100){
+		int noChangesCounterTolerance = 50 * ((int)stateObs.getWorldDimension().getHeight()/40 - 5);
+		if(noChangesCounter == Math.max(25, noChangesCounterTolerance)){
 			//penalize theories that led me to stall
 			tainTheories(this.lastChangeStateTheorys, -1);
 			//TODO make it stop better
@@ -157,10 +157,21 @@ public class Agent extends AbstractPlayer{
 			if(planInExecution == null) {
 
 				Scenario scenario = world.getCurrentScenario();
-				List<Theory> theories = knowledge.getMatchingTheories(scenario, 1, false);
+				List<Theory> theories = knowledge.getMatchingTheories(scenario, 3, false);
 
-				double demand = 1F;
+				double demand = 0.75;
+
 				while (theory == null) {
+
+					// If there is not an exact match, but close, mutate one
+					if (theories.size() > 0 && theories.get(0).match != 0 && theories.get(0).getRelevance() > demand) {
+						Scenario mutateScenario = Scenario.mutate(theories.get(0).scenario, scenario);
+						Theory t = new Theory(mutateScenario);
+						t.setAction(theories.get(0).getAction());
+						theory = knowledge.exists(t);
+						if(theory == null) theory = t;
+					}
+
 					theory = pickOneWorthIt(theories, demand);
 
 					if (theory == null) {
@@ -181,14 +192,19 @@ public class Agent extends AbstractPlayer{
 		return theory;
 	}
 
-	public double demandUtility(){
+	public double getEntropy() {
+		double entropy = 2 * (noChangesCounter / 200.0); //higher val = 0.5
+		// the higher the gameTick, higher the entropy
+		entropy += this.gameTick / 4000.0;
+		return entropy;
+	}
+
+	public double demandUtility() {
 		// starts in 1
 		double result = 1;
 		// the higher steps without changing nothing, higher the entropy
-		double entropy = (noChangesCounter / 200.0); //higher val = 0.5
-		// the higher the gameTick, higher the entropy
-		entropy += this.gameTick / 4000.0;
-		result += (randomGenerator.nextInt(10)) * entropy;
+		double entropy = getEntropy();
+		result += (randomGenerator.nextInt(10)) * Math.pow(1 + entropy,2);
 		return result;
 	}
 
@@ -222,18 +238,19 @@ public class Agent extends AbstractPlayer{
 	}
 
 	private Theory pickOneWorthIt(List<Theory> theories, double threshold){
-		if (theories.size() == 0 || theories.get(0).getUtility() <= threshold) return null;
+		if (theories.size() == 0 || theories.get(0).getRelevance() <= threshold) return null;
 
 		double accumUtil = 0;
-		double base = 0; //Very low probability for zero Utility
+		double base = getEntropy() / 100.0; //Very low probability for zero Utility
+
 		//As it's ordered by relevance, we weight the first ones
 		int size = Math.min(theories.size(), 5);
 		for(int i = 0; i < size; i ++){
-			accumUtil += base + Math.max(theories.get(i).getUtility(), 0);
+			accumUtil += base + Math.max(theories.get(i).getRelevance(), 0);
 		}
 		double[] norm = new double[size];
 		for(int i = 0; i < size; i ++){
-			norm[i] = (base + Math.max(theories.get(i).getUtility(), 0)) / accumUtil;
+			norm[i] = (base + Math.max(theories.get(i).getRelevance(), 0)) / accumUtil;
 		}
 
 		double rnd = randomGenerator.nextDouble();
@@ -317,7 +334,7 @@ public class Agent extends AbstractPlayer{
 				CompareResult newCompareResult = calculateStateUtility(resultWorld);
 
 				//Has moved boxes
-				if (Math.abs(compareResult.boxDist - newCompareResult.boxDist) > 0) {
+				if (Math.abs(compareResult.scenarioDist - newCompareResult.scenarioDist) > 0) {
 					addLastChangeStateTheory(theory);
 				} else {
 					this.noChangesCounter++;
